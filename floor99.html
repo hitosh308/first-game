@@ -17,18 +17,27 @@
       --warning: #ffb449;
       --success: #5be0b5;
       --text: #f5f7fa;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
       font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       background: radial-gradient(circle at 20% 20%, rgba(100,160,255,0.25), transparent 60%),
                   radial-gradient(circle at 80% 10%, rgba(60,100,200,0.2), transparent 60%),
                   var(--bg);
       color: var(--text);
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
     }
     button {
       font: inherit;
@@ -74,7 +83,7 @@
       background: rgba(8, 14, 24, 0.84);
       backdrop-filter: blur(12px);
       position: sticky;
-      top: 0;
+      top: var(--safe-top);
       z-index: 20;
       box-shadow: 0 18px 36px rgba(0,0,0,0.35);
     }
@@ -202,6 +211,8 @@
       color: var(--text);
       transition: opacity 0.35s ease;
       z-index: 5;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .tower-overlay.hidden {
       opacity: 0;
