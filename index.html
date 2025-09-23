@@ -141,6 +141,13 @@
             <button id="menuShooterSurvivalBtn" type="button">サバイバル</button>
           </div>
         </article>
+        <article class="menu-card">
+          <h2>ぶっ飛ばし剣士</h2>
+          <p>ワンボタン操作で敵を吹き飛ばすラン＆スラッシュ。コンボ倍率とアイテムを駆使して爽快にベストスコアを更新しましょう。</p>
+          <div class="menu-actions">
+            <button id="menuBladeBtn" type="button">ラン＆スラッシュ</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
@@ -150,6 +157,7 @@
     const continueBtn = document.getElementById('menuContinueBtn');
     const scoreBtn = document.getElementById('menuShooterScoreBtn');
     const survivalBtn = document.getElementById('menuShooterSurvivalBtn');
+    const bladeBtn = document.getElementById('menuBladeBtn');
 
     function getContinueData() {
       try {
@@ -192,6 +200,12 @@
     if (survivalBtn) {
       survivalBtn.addEventListener('click', () => {
         window.location.href = 'shooter.html?mode=survival&autostart=1';
+      });
+    }
+
+    if (bladeBtn) {
+      bladeBtn.addEventListener('click', () => {
+        window.location.href = 'swordsman.html';
       });
     }
 
