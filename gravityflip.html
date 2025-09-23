@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>グラビティ・フリップランナー</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+      --bg: radial-gradient(circle at top, rgba(90, 140, 255, 0.16), rgba(6, 10, 18, 1) 70%);
+      --panel: rgba(12, 16, 26, 0.82);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --accent: #6cf8ff;
+      --accent-soft: rgba(110, 200, 255, 0.18);
+      --text: #f5f7fa;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --page-padding: clamp(1rem, 3vw, 2rem);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--page-padding);
+      padding-top: calc(var(--page-padding) + var(--safe-top));
+      padding-bottom: calc(var(--page-padding) + var(--safe-bottom));
+      padding-left: calc(var(--page-padding) + var(--safe-left));
+      padding-right: calc(var(--page-padding) + var(--safe-right));
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+    .app {
+      position: relative;
+      width: min(1100px, 100%);
+      aspect-ratio: 16 / 9;
+      background: rgba(4, 8, 14, 0.94);
+      border-radius: clamp(1rem, 2vw, 1.4rem);
+      box-shadow: 0 32px 90px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+      touch-action: none;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #03060a;
+    }
+    .hud {
+      position: absolute;
+      inset: 0;
+      padding: clamp(1rem, 3vw, 1.6rem);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    .hud-row {
+      display: flex;
+      gap: clamp(0.6rem, 2vw, 1rem);
+      flex-wrap: wrap;
+    }
+    .hud-card {
+      background: rgba(10, 16, 26, 0.78);
+      border-radius: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.6rem 0.85rem;
+      min-width: 120px;
+      pointer-events: auto;
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+    }
+    .hud-card strong {
+      display: block;
+      font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+      letter-spacing: 0.05em;
+    }
+    .hud-card span {
+      display: block;
+      font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+      opacity: 0.72;
+      letter-spacing: 0.08em;
+    }
+    .hud-right {
+      margin-left: auto;
+      display: flex;
+      align-items: stretch;
+      gap: clamp(0.5rem, 1.5vw, 0.8rem);
+      flex-wrap: wrap;
+    }
+    .combo-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+    .combo-panel strong {
+      font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+      letter-spacing: 0.08em;
+    }
+    .combo-panel small {
+      font-size: clamp(0.58rem, 1.4vw, 0.72rem);
+      letter-spacing: 0.08em;
+      opacity: 0.74;
+    }
+    .combo-meter {
+      position: relative;
+      width: clamp(160px, 22vw, 220px);
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+    .combo-meter-fill {
+      position: absolute;
+      inset: 0;
+      width: 0%;
+      background: linear-gradient(120deg, rgba(110, 200, 255, 0.85), rgba(160, 120, 255, 0.9));
+      transition: width 0.15s ease;
+    }
+    .shield-dots {
+      display: flex;
+      gap: 0.3rem;
+      align-items: center;
+      margin-top: 0.3rem;
+    }
+    .shield-dot {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      border: 1px solid rgba(120, 220, 255, 0.75);
+      background: rgba(120, 220, 255, 0.6);
+      box-shadow: 0 0 10px rgba(120, 220, 255, 0.75);
+    }
+    .shield-dot.empty {
+      background: transparent;
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: none;
+      opacity: 0.4;
+    }
+    .status-tags {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      margin-top: 0.4rem;
+    }
+    .status-tag {
+      background: rgba(255, 255, 255, 0.16);
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+      font-size: clamp(0.52rem, 1.2vw, 0.68rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+    }
+    .status-tag.slow {
+      background: rgba(120, 200, 255, 0.22);
+      box-shadow: 0 0 14px rgba(120, 200, 255, 0.4);
+    }
+    .status-tag.combo {
+      background: rgba(160, 120, 255, 0.24);
+      box-shadow: 0 0 14px rgba(160, 120, 255, 0.45);
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 10, 16, 0.82);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(1.5rem, 4vw, 2.6rem);
+      gap: clamp(1.2rem, 3vw, 1.8rem);
+      text-align: center;
+      color: var(--text);
+      transition: opacity 0.25s ease;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .overlay h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      letter-spacing: 0.08em;
+    }
+    .overlay p {
+      margin: 0;
+      line-height: 1.7;
+      opacity: 0.82;
+      font-size: clamp(0.85rem, 1.9vw, 1rem);
+    }
+    .overlay-section {
+      width: min(680px, 100%);
+      background: rgba(12, 18, 30, 0.78);
+      border-radius: 1.1rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: clamp(1rem, 2.8vw, 1.4rem);
+      text-align: left;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+    .overlay-section h2 {
+      margin: 0 0 0.6rem;
+      font-size: clamp(1rem, 2.2vw, 1.25rem);
+      letter-spacing: 0.06em;
+    }
+    .overlay-section ul {
+      margin: 0;
+      padding-left: 1.2em;
+      display: grid;
+      gap: 0.35rem;
+      font-size: clamp(0.8rem, 1.9vw, 0.95rem);
+    }
+    .overlay button {
+      font: inherit;
+      padding: 0.7rem 1.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: linear-gradient(135deg, rgba(110, 200, 255, 0.42), rgba(120, 90, 255, 0.42));
+      color: #fff;
+      cursor: pointer;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 20px 48px rgba(100, 160, 255, 0.35);
+      pointer-events: auto;
+    }
+    .overlay button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 26px 60px rgba(120, 180, 255, 0.45);
+    }
+    .overlay button:active {
+      transform: translateY(1px);
+    }
+    .overlay-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: center;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.8rem;
+      margin-top: 0.8rem;
+    }
+    .result-card {
+      background: rgba(10, 16, 26, 0.75);
+      border-radius: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .result-card strong {
+      font-size: 1.1rem;
+      letter-spacing: 0.06em;
+    }
+    .result-card span {
+      font-size: 0.78rem;
+      opacity: 0.76;
+      letter-spacing: 0.05em;
+    }
+    .achievement-list {
+      margin: 0;
+      padding-left: 1.2em;
+      display: grid;
+      gap: 0.35rem;
+      font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+    }
+    .toast-container {
+      position: absolute;
+      left: clamp(0.8rem, 2.2vw, 1.4rem);
+      bottom: clamp(0.8rem, 2.2vw, 1.4rem);
+      display: grid;
+      gap: 0.4rem;
+      pointer-events: none;
+      z-index: 6;
+    }
+    .toast {
+      background: rgba(12, 20, 36, 0.9);
+      border-radius: 0.8rem;
+      border: 1px solid rgba(120, 200, 255, 0.35);
+      padding: 0.65rem 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      color: #e9f6ff;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      animation: toast-in 0.3s ease, toast-out 0.3s ease 3.2s forwards;
+    }
+    .toast strong {
+      letter-spacing: 0.06em;
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toast-out {
+      to { opacity: 0; transform: translateY(10px); }
+    }
+    @media (max-width: 680px) {
+      .hud-card { flex: 1; min-width: auto; }
+      .combo-meter { width: 100%; }
+      .overlay-section { padding: 1rem; }
+      .overlay-buttons { flex-direction: column; }
+      .overlay button { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app" aria-label="グラビティ・フリップランナー">
+    <canvas id="gameCanvas" width="1280" height="720" role="img" aria-label="ゲーム画面"></canvas>
+    <div class="hud" aria-live="polite">
+      <div class="hud-row">
+        <div class="hud-card" aria-label="走行距離">
+          <span>Distance</span>
+          <strong id="distanceValue">0 m</strong>
+        </div>
+        <div class="hud-card" aria-label="スコア">
+          <span>Score</span>
+          <strong id="scoreValue">0</strong>
+        </div>
+        <div class="hud-card" aria-label="速度">
+          <span>Speed</span>
+          <strong id="speedValue">0 km/h</strong>
+        </div>
+        <div class="hud-right">
+          <div class="hud-card combo-panel" aria-label="コンボ倍率">
+            <strong id="comboValue">x1.00</strong>
+            <small id="comboLabel">FLIP COMBO</small>
+            <div class="combo-meter" aria-hidden="true">
+              <div class="combo-meter-fill" id="comboMeter"></div>
+            </div>
+          </div>
+          <div class="hud-card" aria-label="シールド">
+            <span>Shield</span>
+            <div class="shield-dots" id="shieldDots" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+      <div class="hud-row">
+        <div class="hud-card" style="min-width: clamp(200px, 40%, 320px);">
+          <span>ステータス</span>
+          <div class="status-tags" id="statusTags"></div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay active" id="startOverlay" role="dialog" aria-modal="true">
+      <h1>グラビティ・フリップランナー</h1>
+      <p>ワンボタンで重力を反転し、地面と天井を駆け巡りながら障害物をかわすハイスピード・ランナー。距離とコンボ倍率でハイスコアを目指そう！</p>
+      <div class="overlay-section">
+        <h2>操作</h2>
+        <ul>
+          <li>スペースキー / クリック / タップで重力反転</li>
+          <li>反転にクールダウンはなし。連打でギリギリを攻めろ！</li>
+          <li>シールドやタイムスローを活用して危険地帯を突破</li>
+        </ul>
+      </div>
+      <div class="overlay-buttons">
+        <button type="button" id="startButton">RUN START</button>
+        <button type="button" id="menuButton">BACK TO MENU</button>
+      </div>
+    </div>
+    <div class="overlay" id="resultOverlay" role="dialog" aria-modal="true" aria-live="assertive">
+      <h1>リザルト</h1>
+      <div class="result-grid">
+        <div class="result-card">
+          <span>総スコア</span>
+          <strong id="resultScore">0</strong>
+        </div>
+        <div class="result-card">
+          <span>走行距離</span>
+          <strong id="resultDistance">0 m</strong>
+        </div>
+        <div class="result-card">
+          <span>最大コンボ</span>
+          <strong id="resultCombo">x1.00</strong>
+        </div>
+        <div class="result-card">
+          <span>最高速度</span>
+          <strong id="resultSpeed">0 km/h</strong>
+        </div>
+        <div class="result-card">
+          <span>ベストスコア</span>
+          <strong id="resultBest">0</strong>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <h2>アンロック実績</h2>
+        <ul class="achievement-list" id="resultAchievements"></ul>
+      </div>
+      <div class="overlay-buttons">
+        <button type="button" id="restartButton">RETRY</button>
+        <button type="button" id="resultMenuButton">BACK TO MENU</button>
+      </div>
+    </div>
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <script>
+    (() => {
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const distanceEl = document.getElementById('distanceValue');
+      const scoreEl = document.getElementById('scoreValue');
+      const speedEl = document.getElementById('speedValue');
+      const comboEl = document.getElementById('comboValue');
+      const comboLabelEl = document.getElementById('comboLabel');
+      const comboMeterEl = document.getElementById('comboMeter');
+      const shieldDotsEl = document.getElementById('shieldDots');
+      const statusTagsEl = document.getElementById('statusTags');
+      const startOverlay = document.getElementById('startOverlay');
+      const resultOverlay = document.getElementById('resultOverlay');
+      const startButton = document.getElementById('startButton');
+      const restartButton = document.getElementById('restartButton');
+      const menuButton = document.getElementById('menuButton');
+      const resultMenuButton = document.getElementById('resultMenuButton');
+      const resultScoreEl = document.getElementById('resultScore');
+      const resultDistanceEl = document.getElementById('resultDistance');
+      const resultComboEl = document.getElementById('resultCombo');
+      const resultSpeedEl = document.getElementById('resultSpeed');
+      const resultBestEl = document.getElementById('resultBest');
+      const resultAchievementsEl = document.getElementById('resultAchievements');
+      const toastContainer = document.getElementById('toastContainer');
+      const app = document.getElementById('app');
+
+      const laneTop = 150;
+      const laneBottom = 570;
+      const laneHeight = laneBottom - laneTop;
+      const laneMid = (laneTop + laneBottom) / 2;
+      const playerRadius = 26;
+      const comboWindow = 2.6;
+
+      const baseSpeed = 320;
+      const maxSpeed = 780;
+      const metersPerUnit = 1 / 16;
+
+      const achievementCatalog = [
+        { id: 'distance1k', label: '1000m突破', desc: '走行距離1000mに到達した。' },
+        { id: 'combo10', label: '10連続フリップ成功', desc: 'フリップコンボ倍率を10段階まで繋いだ。' },
+        { id: 'speedHold', label: '速度MAX維持10秒', desc: '最高速度ゾーンを10秒キープした。' }
+      ];
+
+      const storageKey = 'gravity_flip_runner_best';
+      const achievementKey = 'gravity_flip_runner_achievements';
+
+      let bestScore = Number(localStorage.getItem(storageKey) || '0');
+      let achievementData = {};
+      try {
+        const raw = JSON.parse(localStorage.getItem(achievementKey) || '{}');
+        if (raw && typeof raw === 'object') {
+          achievementData = raw;
+        }
+      } catch (err) {
+        achievementData = {};
+      }
+
+      const game = {
+        running: false,
+        distance: 0,
+        score: 0,
+        speed: baseSpeed,
+        targetSpeed: baseSpeed,
+        stagePhase: 0,
+        shields: 1,
+        slowTimer: 0,
+        comboSlowTimer: 0,
+        comboLevel: 0,
+        comboTimer: 0,
+        comboMultiplier: 1,
+        maxCombo: 1,
+        maxComboLevel: 0,
+        maxSpeed: baseSpeed,
+        invincibleTime: 0,
+        spawnTimer: 1.2,
+        hazards: [],
+        items: [],
+        particles: [],
+        neonTrails: [],
+        flipFlash: 0,
+        backgroundShift: 0,
+        lastStageMessage: -1,
+        lastFlipTime: -10,
+        lastComboTime: -10,
+        highSpeedHold: 0,
+        achievementsThisRun: new Set()
+      };
+
+      const player = {
+        x: 260,
+        y: laneBottom - playerRadius,
+        vy: 0,
+        gravity: 1,
+        angle: 0,
+        flipVisual: 0,
+        shadow: 0
+      };
+
+      let audioCtx = null;
+      let audioGain = null;
+      let beatNextTime = 0;
+      let beatTempo = 90;
+      let lastTime = 0;
+
+      function initAudio() {
+        if (audioCtx) return;
+        try {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          audioGain = audioCtx.createGain();
+          audioGain.gain.value = 0.12;
+          audioGain.connect(audioCtx.destination);
+          beatNextTime = audioCtx.currentTime + 0.25;
+        } catch (err) {
+          audioCtx = null;
+        }
+      }
+
+      function playTone(frequency, duration = 0.12, gainValue = 0.2) {
+        if (!audioCtx || !audioGain) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = frequency;
+        osc.type = 'triangle';
+        gain.gain.setValueAtTime(Math.max(0.0001, gainValue), audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioGain);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      }
+
+      function playFlipSound() {
+        playTone(540 + Math.random() * 120, 0.12, 0.26);
+      }
+
+      function playComboSound(level) {
+        const base = 320 + level * 22;
+        playTone(base, 0.18, 0.28);
+      }
+
+      function playItemSound(type) {
+        const freq = type === 'shield' ? 420 : type === 'slow' ? 300 : 680;
+        playTone(freq, 0.22, 0.24);
+      }
+
+      function resizeCanvas() {
+        const ratio = canvas.width / canvas.height;
+        const parent = canvas.parentElement;
+        if (!parent) return;
+        const width = parent.clientWidth;
+        const height = parent.clientHeight;
+        const parentRatio = width / height;
+        if (parentRatio > ratio) {
+          canvas.style.width = `${height * ratio}px`;
+          canvas.style.height = `${height}px`;
+        } else {
+          canvas.style.width = `${width}px`;
+          canvas.style.height = `${width / ratio}px`;
+        }
+      }
+
+      function resetGame() {
+        game.running = false;
+        game.distance = 0;
+        game.score = 0;
+        game.speed = baseSpeed;
+        game.targetSpeed = baseSpeed;
+        game.stagePhase = 0;
+        game.shields = 1;
+        game.slowTimer = 0;
+        game.comboSlowTimer = 0;
+        game.comboLevel = 0;
+        game.comboTimer = 0;
+        game.comboMultiplier = 1;
+        game.maxCombo = 1;
+        game.maxComboLevel = 0;
+        game.maxSpeed = baseSpeed;
+        game.invincibleTime = 0;
+        game.spawnTimer = 1.2;
+        game.hazards = [];
+        game.items = [];
+        game.particles = [];
+        game.neonTrails = [];
+        game.flipFlash = 0;
+        game.backgroundShift = 0;
+        game.lastStageMessage = -1;
+        game.lastFlipTime = -10;
+        game.lastComboTime = -10;
+        game.highSpeedHold = 0;
+        game.achievementsThisRun = new Set();
+        player.x = 260;
+        player.y = laneBottom - playerRadius;
+        player.vy = 0;
+        player.gravity = 1;
+        player.angle = 0;
+        player.flipVisual = 0;
+        player.shadow = 0;
+        updateHud();
+      }
+
+      function startGame() {
+        resetGame();
+        initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+        startOverlay.classList.remove('active');
+        resultOverlay.classList.remove('active');
+        game.running = true;
+      }
+
+      function goToMenu() {
+        window.location.href = 'index.html';
+      }
+
+      function formatNumber(value) {
+        return Math.round(value).toLocaleString('ja-JP');
+      }
+
+      function formatDistance(value) {
+        return `${Math.floor(value)} m`;
+      }
+
+      function updateHud() {
+        distanceEl.textContent = formatDistance(game.distance);
+        scoreEl.textContent = formatNumber(game.score);
+        const speedKmh = game.speed * 0.12;
+        speedEl.textContent = `${Math.round(speedKmh)} km/h`;
+        comboEl.textContent = `x${game.comboMultiplier.toFixed(2)}`;
+        comboLabelEl.textContent = game.comboLevel > 0 ? `COMBO ${game.comboLevel}` : 'FLIP COMBO';
+        comboMeterEl.style.width = `${Math.min(100, (game.comboTimer / comboWindow) * 100)}%`;
+        shieldDotsEl.innerHTML = '';
+        const maxShields = 3;
+        for (let i = 0; i < maxShields; i += 1) {
+          const dot = document.createElement('span');
+          dot.className = 'shield-dot' + (i < game.shields ? '' : ' empty');
+          shieldDotsEl.appendChild(dot);
+        }
+        const tags = [];
+        if (game.slowTimer > 0) tags.push('<span class="status-tag slow">TIME SLOW</span>');
+        if (game.comboLevel >= 3) tags.push('<span class="status-tag combo">FLIP COMBO</span>');
+        if (game.invincibleTime > 0) tags.push('<span class="status-tag">SHIELD ACTIVE</span>');
+        statusTagsEl.innerHTML = tags.join('');
+      }
+
+      function showToast(title, message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `<strong>${title}</strong><span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+          toast.remove();
+        }, 3600);
+      }
+
+      function markAchievement(id) {
+        if (game.achievementsThisRun.has(id)) return;
+        const info = achievementCatalog.find((a) => a.id === id);
+        if (!info) return;
+        game.achievementsThisRun.add(id);
+        if (!achievementData[id]) {
+          achievementData[id] = true;
+          localStorage.setItem(achievementKey, JSON.stringify(achievementData));
+          showToast('実績アンロック', info.label);
+        } else {
+          showToast('実績達成', info.label);
+        }
+      }
+      function updateResultAchievements() {
+        resultAchievementsEl.innerHTML = '';
+        if (game.achievementsThisRun.size === 0) {
+          const li = document.createElement('li');
+          li.textContent = '今回は新しい実績は獲得していません。';
+          resultAchievementsEl.appendChild(li);
+          return;
+        }
+        for (const id of game.achievementsThisRun) {
+          const info = achievementCatalog.find((a) => a.id === id);
+          if (!info) continue;
+          const li = document.createElement('li');
+          const strong = document.createElement('strong');
+          strong.textContent = info.label;
+          const span = document.createElement('span');
+          span.textContent = info.desc;
+          li.appendChild(strong);
+          li.appendChild(document.createElement('br'));
+          li.appendChild(span);
+          resultAchievementsEl.appendChild(li);
+        }
+      }
+
+      function endGame() {
+        if (!game.running) return;
+        game.running = false;
+        if (audioCtx && audioCtx.state === 'running' && audioCtx.suspend) {
+          audioCtx.suspend().catch(() => {});
+        }
+        resultScoreEl.textContent = formatNumber(game.score);
+        resultDistanceEl.textContent = formatDistance(game.distance);
+        resultComboEl.textContent = `x${game.maxCombo.toFixed(2)}`;
+        resultSpeedEl.textContent = `${Math.round(game.maxSpeed * 0.12)} km/h`;
+        if (game.score > bestScore) {
+          bestScore = Math.round(game.score);
+          localStorage.setItem(storageKey, String(bestScore));
+        }
+        resultBestEl.textContent = formatNumber(bestScore);
+        updateResultAchievements();
+        resultOverlay.classList.add('active');
+      }
+
+      function spawnParticles(x, y, count, color) {
+        for (let i = 0; i < count; i += 1) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 180 + Math.random() * 200;
+          game.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0,
+            maxLife: 0.6 + Math.random() * 0.25,
+            size: 3 + Math.random() * 4,
+            color
+          });
+        }
+      }
+
+      function spawnFlipParticles(x, y) {
+        const hue = game.stagePhase === 2 ? 280 : game.stagePhase === 1 ? 200 : 190;
+        spawnParticles(x, y, 18, `hsla(${hue}, 85%, 62%, 1)`);
+      }
+
+      function addCombo(now) {
+        if (now - game.lastComboTime < 0.25) {
+          game.comboTimer = comboWindow;
+          return;
+        }
+        game.lastComboTime = now;
+        game.comboLevel += 1;
+        game.comboTimer = comboWindow;
+        game.comboMultiplier = 1 + Math.min(game.comboLevel, 12) * 0.2;
+        game.maxCombo = Math.max(game.maxCombo, game.comboMultiplier);
+        game.maxComboLevel = Math.max(game.maxComboLevel, game.comboLevel);
+        game.score += 180 * game.comboMultiplier;
+        game.comboSlowTimer = Math.min(game.comboSlowTimer + 0.45, 1.1);
+        playComboSound(game.comboLevel);
+        spawnParticles(player.x, player.y, 14, 'rgba(180, 120, 255, 0.9)');
+        if (game.comboLevel >= 10) {
+          markAchievement('combo10');
+        }
+      }
+
+      function checkFlipCombo(prevGravity, now) {
+        for (const hazard of game.hazards) {
+          const dx = hazard.x - player.x;
+          if (dx < -40 || dx > 150) continue;
+          if (hazard.type === 'spike') {
+            if ((prevGravity === 1 && hazard.orientation === 'floor') || (prevGravity === -1 && hazard.orientation === 'ceiling')) {
+              if (dx > -15 && dx < 120) {
+                addCombo(now);
+                return true;
+              }
+            }
+          } else if (hazard.type === 'laser') {
+            if ((prevGravity === 1 && hazard.activeSide === 1) || (prevGravity === -1 && hazard.activeSide === -1)) {
+              if (dx > -20 && dx < 110) {
+                addCombo(now);
+                return true;
+              }
+            }
+          } else if (hazard.type === 'block') {
+            const top = hazard.centerY - hazard.height / 2;
+            const bottom = hazard.centerY + hazard.height / 2;
+            if (prevGravity === 1 && player.y >= top - 10) {
+              if (dx > -10 && dx < 120) {
+                addCombo(now);
+                return true;
+              }
+            }
+            if (prevGravity === -1 && player.y <= bottom + 10) {
+              if (dx > -10 && dx < 120) {
+                addCombo(now);
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      }
+
+      function circleRectCollision(px, py, radius, rx, ry, rw, rh) {
+        const closestX = Math.max(rx, Math.min(px, rx + rw));
+        const closestY = Math.max(ry, Math.min(py, ry + rh));
+        const dx = px - closestX;
+        const dy = py - closestY;
+        return dx * dx + dy * dy < radius * radius;
+      }
+
+      function spawnSpike(x, orientation) {
+        const height = 120;
+        const width = 70;
+        game.hazards.push({
+          type: 'spike',
+          x,
+          width,
+          height,
+          orientation
+        });
+      }
+
+      function spawnMovingBlock(x) {
+        const width = 120;
+        const height = 90 + Math.random() * 40;
+        const base = laneTop + laneHeight * (0.3 + Math.random() * 0.4);
+        const amplitude = 70 + Math.random() * 90;
+        game.hazards.push({
+          type: 'block',
+          x,
+          width,
+          height,
+          centerY: base,
+          amplitude,
+          phase: Math.random() * Math.PI * 2,
+          speed: 1.2 + Math.random() * 0.9
+        });
+      }
+
+      function spawnLaserGate(x) {
+        const cycle = 1.6 - Math.min(game.distance / 2600, 0.6);
+        game.hazards.push({
+          type: 'laser',
+          x,
+          width: 60,
+          cycle,
+          timer: Math.random() * cycle,
+          activeSide: Math.random() < 0.5 ? 1 : -1,
+          pulse: 0
+        });
+      }
+
+      function spawnItem(x, lane) {
+        const typeRoll = Math.random();
+        let type = 'orb';
+        if (typeRoll > 0.7) {
+          type = 'shield';
+        } else if (typeRoll > 0.45) {
+          type = 'slow';
+        }
+        let y = lane === 1 ? laneBottom - 100 : laneTop + 100;
+        if (type === 'slow') {
+          y = laneMid;
+        }
+        game.items.push({
+          type,
+          x,
+          y,
+          radius: type === 'orb' ? 18 : 24,
+          pulse: 0,
+          value: type === 'orb' ? 260 : 0
+        });
+      }
+
+      function maybeSpawnItem(baseX) {
+        const chance = 0.45 + Math.min(game.distance / 2400, 0.25);
+        if (Math.random() > chance) return;
+        const laneChoice = Math.random() < 0.5 ? 1 : -1;
+        spawnItem(baseX + 120 + Math.random() * 80, laneChoice);
+      }
+
+      function spawnPattern() {
+        const baseX = canvas.width + 140;
+        const stage = game.stagePhase;
+        const difficulty = Math.min(1, game.distance / 2400);
+        const roll = Math.random();
+        if (roll < 0.35) {
+          spawnSpike(baseX, Math.random() < 0.55 ? 'floor' : 'ceiling');
+          if (Math.random() < 0.45 + difficulty * 0.4) {
+            spawnSpike(baseX + 150, Math.random() < 0.5 ? 'ceiling' : 'floor');
+          }
+        } else if (roll < 0.65) {
+          spawnMovingBlock(baseX + 40);
+          if (difficulty > 0.4 && Math.random() < difficulty) {
+            spawnSpike(baseX + 220, Math.random() < 0.5 ? 'floor' : 'ceiling');
+          }
+        } else {
+          spawnLaserGate(baseX + 20);
+          if (difficulty > 0.6 && Math.random() < 0.6) {
+            spawnMovingBlock(baseX + 200);
+          }
+        }
+        if (stage >= 1 && Math.random() < 0.3 + difficulty * 0.4) {
+          spawnLaserGate(baseX + 320 + Math.random() * 60);
+        }
+        maybeSpawnItem(baseX);
+      }
+      const starField = Array.from({ length: 64 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        depth: 0.45 + Math.random() * 0.7
+      }));
+
+      const cyberLines = Array.from({ length: 26 }, () => ({
+        offset: Math.random() * canvas.width,
+        tilt: 0.6 + Math.random() * 0.4
+      }));
+      function handleDamage() {
+        if (game.invincibleTime > 0) return;
+        if (game.shields > 0) {
+          game.shields -= 1;
+          game.invincibleTime = 1.1;
+          game.comboLevel = 0;
+          game.comboTimer = 0;
+          game.comboMultiplier = 1;
+          game.comboSlowTimer = 0;
+          spawnParticles(player.x, player.y, 26, 'rgba(120, 220, 255, 0.9)');
+          playItemSound('shield');
+          updateHud();
+        } else {
+          spawnParticles(player.x, player.y, 34, 'rgba(255, 80, 140, 0.9)');
+          endGame();
+        }
+      }
+
+      function collectItem(item) {
+        if (item.type === 'orb') {
+          const bonus = (item.value || 260) * game.comboMultiplier;
+          game.score += bonus;
+          spawnParticles(item.x, item.y, 16, 'rgba(255, 220, 120, 0.9)');
+        } else if (item.type === 'shield') {
+          if (game.shields < 3) {
+            game.shields += 1;
+          }
+          game.invincibleTime = Math.max(game.invincibleTime, 0.3);
+          spawnParticles(item.x, item.y, 18, 'rgba(120, 220, 255, 0.95)');
+        } else if (item.type === 'slow') {
+          game.slowTimer = Math.max(game.slowTimer, 3.8);
+          spawnParticles(item.x, item.y, 18, 'rgba(120, 200, 255, 0.85)');
+        }
+        playItemSound(item.type);
+        updateHud();
+      }
+
+      function updateHazards(dt, rawDt) {
+        const radius = playerRadius - 6;
+        const floorY = laneBottom;
+        const ceilingY = laneTop;
+        game.hazards = game.hazards.filter((hazard) => {
+          hazard.x -= game.speed * dt;
+          if (hazard.type === 'block') {
+            if (!('base' in hazard)) hazard.base = hazard.centerY;
+            hazard.phase += rawDt * hazard.speed;
+            hazard.centerY = hazard.base + Math.sin(hazard.phase) * hazard.amplitude;
+            const half = hazard.height / 2;
+            const minY = laneTop + half + 20;
+            const maxY = laneBottom - half - 20;
+            hazard.centerY = Math.max(minY, Math.min(maxY, hazard.centerY));
+            const rectX = hazard.x - hazard.width / 2;
+            const rectY = hazard.centerY - half;
+            if (game.invincibleTime <= 0 && circleRectCollision(player.x, player.y, radius, rectX, rectY, hazard.width, hazard.height)) {
+              handleDamage();
+            }
+          } else if (hazard.type === 'spike') {
+            const width = hazard.width;
+            const left = hazard.x - width / 2;
+            const triHeight = hazard.height - 20;
+            if (hazard.orientation === 'floor') {
+              const top = floorY - hazard.height;
+              if (game.invincibleTime <= 0 && circleRectCollision(player.x, player.y, radius, left + 6, top + 12, width - 12, triHeight)) {
+                handleDamage();
+              }
+            } else {
+              const top = ceilingY;
+              if (game.invincibleTime <= 0 && circleRectCollision(player.x, player.y, radius, left + 6, top, width - 12, triHeight)) {
+                handleDamage();
+              }
+            }
+          } else if (hazard.type === 'laser') {
+            hazard.timer += rawDt;
+            if (hazard.timer >= hazard.cycle) {
+              hazard.timer -= hazard.cycle;
+              hazard.activeSide *= -1;
+            }
+            const left = hazard.x - hazard.width / 2;
+            const beamGap = 20;
+            if (hazard.activeSide === 1) {
+              const top = laneMid + beamGap;
+              const height = laneBottom - top;
+              if (game.invincibleTime <= 0 && circleRectCollision(player.x, player.y, radius, left, top, hazard.width, height)) {
+                handleDamage();
+              }
+            } else {
+              const top = laneTop;
+              const height = laneMid - beamGap - top;
+              if (game.invincibleTime <= 0 && circleRectCollision(player.x, player.y, radius, left, top, hazard.width, height)) {
+                handleDamage();
+              }
+            }
+            hazard.pulse = Math.sin((hazard.timer / hazard.cycle) * Math.PI);
+          }
+          return hazard.x + 200 > 0;
+        });
+      }
+
+      function updateItems(dt, rawDt) {
+        game.items = game.items.filter((item) => {
+          item.x -= game.speed * dt;
+          item.pulse += rawDt * 3.2;
+          if (item.x < -160) return false;
+          const dist = Math.hypot(player.x - item.x, player.y - item.y);
+          if (dist < playerRadius + item.radius) {
+            collectItem(item);
+            return false;
+          }
+          return true;
+        });
+      }
+
+      function updateParticles(rawDt, dt) {
+        game.particles = game.particles.filter((p) => {
+          p.life += rawDt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.98;
+          p.vy *= 0.98;
+          return p.life < p.maxLife;
+        });
+      }
+
+      function updateTrails(rawDt) {
+        if (game.running && (game.speed > baseSpeed + 40 || game.comboLevel > 0)) {
+          game.neonTrails.push({
+            x: player.x,
+            y: player.y,
+            angle: player.angle,
+            life: 0,
+            maxLife: 0.42 + Math.min(game.comboLevel * 0.05, 0.6)
+          });
+        }
+        game.neonTrails = game.neonTrails.filter((trail) => {
+          trail.life += rawDt;
+          return trail.life < trail.maxLife;
+        });
+      }
+
+      function computeTimeScale() {
+        let scale = 1;
+        if (game.slowTimer > 0) scale = Math.min(scale, 0.45);
+        if (game.comboSlowTimer > 0) scale = Math.min(scale, 0.65);
+        return scale;
+      }
+
+      function updateBeat(rawDt) {
+        if (!audioCtx || !audioGain || !game.running) return;
+        const desiredTempo = 100 + Math.min((game.speed - baseSpeed) * 0.18, 90);
+        beatTempo += (desiredTempo - beatTempo) * Math.min(1, rawDt * 4);
+        const now = audioCtx.currentTime;
+        const interval = 60 / Math.max(40, beatTempo);
+        while (now >= beatNextTime) {
+          scheduleBeat(beatNextTime);
+          beatNextTime += interval;
+        }
+      }
+
+      function scheduleBeat(time) {
+        if (!audioCtx || !audioGain) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const stageBase = 140 + game.stagePhase * 45;
+        const comboBoost = Math.min(game.comboLevel * 6, 60);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(stageBase + comboBoost, time);
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.linearRampToValueAtTime(0.22, time + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.32);
+        osc.connect(gain);
+        gain.connect(audioGain);
+        osc.start(time);
+        osc.stop(time + 0.34);
+      }
+      function updateGame(rawDt, dt) {
+        if (!game.running) return;
+        if (game.slowTimer > 0) game.slowTimer = Math.max(0, game.slowTimer - rawDt);
+        if (game.comboSlowTimer > 0) game.comboSlowTimer = Math.max(0, game.comboSlowTimer - rawDt);
+        if (game.invincibleTime > 0) game.invincibleTime = Math.max(0, game.invincibleTime - rawDt);
+        if (game.comboTimer > 0) {
+          game.comboTimer = Math.max(0, game.comboTimer - rawDt);
+          if (game.comboTimer === 0 && game.comboLevel > 0) {
+            game.comboLevel = 0;
+            game.comboMultiplier = 1;
+          }
+        }
+        player.flipVisual = Math.max(0, player.flipVisual - rawDt * 2.6);
+        player.shadow = Math.max(0, player.shadow - rawDt * 2.2);
+        game.flipFlash = Math.max(0, game.flipFlash - rawDt * 2.4);
+
+        const targetAngle = player.gravity === 1 ? 0 : Math.PI;
+        player.angle += (targetAngle - player.angle) * Math.min(1, dt * 6.2);
+
+        const gravityForce = 2400;
+        player.vy += player.gravity * gravityForce * dt;
+        player.vy *= 1 - Math.min(0.22, dt * 0.6);
+        player.y += player.vy * dt;
+
+        const floorTarget = laneBottom - playerRadius;
+        const ceilTarget = laneTop + playerRadius;
+        if (player.gravity === 1 && player.y > floorTarget) {
+          player.y = floorTarget;
+          player.vy = 0;
+        } else if (player.gravity === -1 && player.y < ceilTarget) {
+          player.y = ceilTarget;
+          player.vy = 0;
+        }
+
+        const distanceGain = game.speed * dt * metersPerUnit;
+        game.distance += distanceGain;
+        const scoreGain = distanceGain * 10 * game.comboMultiplier;
+        game.score += scoreGain;
+
+        const targetSpeed = baseSpeed + Math.min(game.distance * 0.4, maxSpeed - baseSpeed);
+        game.targetSpeed = targetSpeed;
+        game.speed += (game.targetSpeed - game.speed) * Math.min(1, dt * 2.4);
+        game.speed = Math.min(game.speed, maxSpeed);
+        game.maxSpeed = Math.max(game.maxSpeed, game.speed);
+
+        game.backgroundShift = (game.backgroundShift + game.speed * dt) % canvas.width;
+
+        game.spawnTimer -= dt * (0.9 + game.speed / 420);
+        if (game.spawnTimer <= 0) {
+          spawnPattern();
+          game.spawnTimer = 1.2 - Math.min(game.distance / 2600, 0.6) + Math.random() * 0.5;
+        }
+
+        updateHazards(dt, rawDt);
+        updateItems(dt, rawDt);
+        updateParticles(rawDt, dt);
+        updateTrails(rawDt);
+
+        const newStage = game.distance < 1200 ? 0 : game.distance < 2600 ? 1 : 2;
+        if (newStage !== game.stagePhase) {
+          game.stagePhase = newStage;
+          const stageNames = ['ネオシティゾーン', '宇宙トンネル', 'サイバー空間'];
+          showToast('ステージチェンジ', stageNames[newStage]);
+        }
+
+        if (game.distance >= 1000) {
+          markAchievement('distance1k');
+        }
+        if (game.speed > maxSpeed - 50) {
+          game.highSpeedHold += rawDt;
+          if (game.highSpeedHold >= 10) {
+            markAchievement('speedHold');
+          }
+        } else {
+          game.highSpeedHold = Math.max(0, game.highSpeedHold - rawDt * 0.5);
+        }
+
+        updateBeat(rawDt);
+        updateHud();
+      }
+
+      function updateIdle(rawDt) {
+        const idleDt = rawDt * 0.5;
+        game.backgroundShift = (game.backgroundShift + 120 * idleDt) % canvas.width;
+        player.shadow = Math.max(0, player.shadow - rawDt * 2.2);
+        game.flipFlash = Math.max(0, game.flipFlash - rawDt * 2.4);
+        updateParticles(rawDt, idleDt);
+        game.neonTrails = game.neonTrails.filter((trail) => {
+          trail.life += rawDt;
+          return trail.life < trail.maxLife;
+        });
+      }
+
+      function drawBackground() {
+        ctx.save();
+        let gradient;
+        if (game.stagePhase === 0) {
+          gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          gradient.addColorStop(0, '#0f1f3a');
+          gradient.addColorStop(1, '#04070f');
+        } else if (game.stagePhase === 1) {
+          gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          gradient.addColorStop(0, '#140c33');
+          gradient.addColorStop(1, '#050712');
+        } else {
+          gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          gradient.addColorStop(0, '#081b25');
+          gradient.addColorStop(1, '#02040a');
+        }
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const shift = game.backgroundShift % canvas.width;
+        if (game.stagePhase === 0) {
+          ctx.fillStyle = 'rgba(20, 30, 48, 0.65)';
+          for (let i = -2; i < 18; i += 1) {
+            const offset = ((i * 150) - shift * 0.4 + canvas.width * 3) % (canvas.width + 150) - 150;
+            const height = 180 + ((i * 63) % 120);
+            ctx.fillRect(offset, laneBottom + 70 - height, 140, height);
+          }
+          ctx.fillStyle = 'rgba(70, 120, 200, 0.16)';
+          for (let i = -2; i < 20; i += 1) {
+            const offset = ((i * 90) - shift * 0.8 + canvas.width * 4) % (canvas.width + 90) - 90;
+            ctx.fillRect(offset, laneTop - 140, 60, laneTop - 20);
+          }
+        } else if (game.stagePhase === 1) {
+          ctx.fillStyle = 'rgba(120, 200, 255, 0.12)';
+          for (const star of starField) {
+            let sx = star.x - shift * star.depth * 0.3;
+            while (sx < -4) sx += canvas.width;
+            while (sx > canvas.width + 4) sx -= canvas.width;
+            const size = 1.2 + star.depth * 3.2;
+            ctx.fillRect(sx, star.y, size, size);
+          }
+          ctx.strokeStyle = 'rgba(120, 200, 255, 0.18)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < 14; i += 1) {
+            const y = laneTop - 120 + i * 28;
+            const offset = (shift * 0.3 + i * 40) % 200;
+            ctx.moveTo(-offset, y);
+            ctx.lineTo(canvas.width - offset, y + 8);
+          }
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = 'rgba(100, 255, 220, 0.18)';
+          ctx.lineWidth = 1.5;
+          for (const line of cyberLines) {
+            let offset = (line.offset - shift * (1.1 + line.tilt * 0.6)) % (canvas.width + 200);
+            if (offset < -100) offset += canvas.width + 200;
+            const x = offset;
+            ctx.beginPath();
+            ctx.moveTo(x, laneTop - 160);
+            ctx.lineTo(x + line.tilt * 180, laneBottom + 180);
+            ctx.stroke();
+          }
+          ctx.fillStyle = 'rgba(120, 255, 200, 0.08)';
+          for (let i = 0; i < 12; i += 1) {
+            const offset = ((i * 120) - shift * 1.2 + canvas.width * 5) % (canvas.width + 120) - 120;
+            ctx.fillRect(offset, laneBottom + 60, 100, 8);
+          }
+        }
+
+        const tunnelGradient = ctx.createLinearGradient(0, laneTop - 60, 0, laneBottom + 60);
+        tunnelGradient.addColorStop(0, 'rgba(12, 18, 32, 0.92)');
+        tunnelGradient.addColorStop(0.5, 'rgba(6, 12, 24, 0.92)');
+        tunnelGradient.addColorStop(1, 'rgba(12, 18, 32, 0.92)');
+        ctx.fillStyle = tunnelGradient;
+        ctx.fillRect(0, laneTop - 60, canvas.width, laneHeight + 120);
+
+        ctx.fillStyle = 'rgba(120, 200, 255, 0.16)';
+        ctx.fillRect(0, laneTop - 60, canvas.width, 6);
+        ctx.fillRect(0, laneBottom + 54, canvas.width, 6);
+
+        if (game.speed > baseSpeed + 60) {
+          const blurAlpha = Math.min(0.35, (game.speed - baseSpeed) / 600);
+          ctx.fillStyle = `rgba(120, 200, 255, ${blurAlpha})`;
+          ctx.fillRect(0, laneTop - 40, canvas.width, 3);
+          ctx.fillRect(0, laneBottom + 37, canvas.width, 3);
+        }
+        ctx.restore();
+      }
+
+      function drawHazards() {
+        for (const hazard of game.hazards) {
+          if (hazard.type === 'spike') {
+            const left = hazard.x - hazard.width / 2;
+            ctx.beginPath();
+            if (hazard.orientation === 'floor') {
+              ctx.moveTo(left, laneBottom);
+              ctx.lineTo(hazard.x, laneBottom - hazard.height);
+              ctx.lineTo(left + hazard.width, laneBottom);
+            } else {
+              ctx.moveTo(left, laneTop);
+              ctx.lineTo(hazard.x, laneTop + hazard.height);
+              ctx.lineTo(left + hazard.width, laneTop);
+            }
+            ctx.closePath();
+            ctx.fillStyle = hazard.orientation === 'floor' ? 'rgba(255, 120, 110, 0.9)' : 'rgba(110, 220, 255, 0.9)';
+            ctx.fill();
+          } else if (hazard.type === 'block') {
+            const left = hazard.x - hazard.width / 2;
+            const top = hazard.centerY - hazard.height / 2;
+            const grd = ctx.createLinearGradient(left, top, left, top + hazard.height);
+            grd.addColorStop(0, 'rgba(60, 80, 140, 0.9)');
+            grd.addColorStop(1, 'rgba(30, 40, 70, 0.9)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(left, top, hazard.width, hazard.height);
+            ctx.strokeStyle = 'rgba(160, 220, 255, 0.35)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(left, top, hazard.width, hazard.height);
+          } else if (hazard.type === 'laser') {
+            const left = hazard.x - hazard.width / 2;
+            ctx.fillStyle = 'rgba(40, 60, 110, 0.5)';
+            ctx.fillRect(left, laneTop, hazard.width, laneHeight);
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            if (hazard.activeSide === 1) {
+              const top = laneMid + 20;
+              const height = laneBottom - top;
+              ctx.fillStyle = 'rgba(255, 90, 110, 0.8)';
+              ctx.fillRect(left, top, hazard.width, height);
+            } else {
+              const top = laneTop;
+              const height = laneMid - 20 - top;
+              ctx.fillStyle = 'rgba(120, 200, 255, 0.8)';
+              ctx.fillRect(left, top, hazard.width, height);
+            }
+            ctx.restore();
+          }
+        }
+      }
+
+      function drawItems() {
+        for (const item of game.items) {
+          ctx.save();
+          ctx.translate(item.x, item.y);
+          const pulse = 1 + Math.sin(item.pulse * 2) * 0.12;
+          ctx.beginPath();
+          ctx.fillStyle = item.type === 'orb' ? 'rgba(255, 220, 140, 0.9)' : item.type === 'shield' ? 'rgba(110, 220, 255, 0.9)' : 'rgba(120, 200, 255, 0.85)';
+          ctx.arc(0, 0, item.radius * pulse, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function drawTrails() {
+        for (const trail of game.neonTrails) {
+          const alpha = 1 - trail.life / trail.maxLife;
+          ctx.save();
+          ctx.globalAlpha = alpha * 0.45;
+          ctx.translate(trail.x, trail.y);
+          ctx.rotate(trail.angle);
+          ctx.beginPath();
+          ctx.fillStyle = 'rgba(120, 200, 255, 0.9)';
+          ctx.ellipse(0, 0, playerRadius * 1.1, playerRadius * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function drawPlayer() {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle);
+        const glow = Math.max(0.4, Math.min(1, (game.speed - baseSpeed) / 320 + game.comboLevel * 0.05));
+        ctx.fillStyle = `rgba(110, 220, 255, ${0.6 + glow * 0.4})`;
+        ctx.shadowColor = 'rgba(110, 220, 255, 0.8)';
+        ctx.shadowBlur = 18 + glow * 12;
+        ctx.beginPath();
+        const stretch = 1 + player.flipVisual * 0.25;
+        ctx.ellipse(0, 0, playerRadius * 0.9, playerRadius * 0.6 * stretch, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        if (game.invincibleTime > 0 || game.shields > 0) {
+          ctx.strokeStyle = 'rgba(120, 220, 255, 0.6)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, playerRadius + 10, playerRadius + 4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawParticles() {
+        ctx.save();
+        for (const p of game.particles) {
+          const alpha = 1 - p.life / p.maxLife;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawOverlayEffects() {
+        if (game.flipFlash > 0) {
+          ctx.save();
+          ctx.globalAlpha = game.flipFlash * 0.5;
+          ctx.fillStyle = 'rgba(200, 240, 255, 0.8)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+        if (game.comboLevel >= 3) {
+          const alpha = Math.min(0.35, game.comboLevel * 0.05);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = 'rgba(180, 120, 255, 0.6)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+        drawHazards();
+        drawItems();
+        drawTrails();
+        drawPlayer();
+        drawParticles();
+        drawOverlayEffects();
+      }
+
+      function toggleGravity() {
+        if (!game.running) return;
+        const now = performance.now() * 0.001;
+        const prev = player.gravity;
+        player.gravity = -player.gravity;
+        player.flipVisual = 1;
+        player.shadow = 1.1;
+        game.flipFlash = 0.45;
+        playFlipSound();
+        spawnFlipParticles(player.x, player.y);
+        const triggered = checkFlipCombo(prev, now);
+        if (!triggered) {
+          game.comboTimer = Math.min(comboWindow, game.comboTimer + 0.2);
+        }
+        game.lastFlipTime = now;
+      }
+      function gameLoop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        let rawDt = (timestamp - lastTime) / 1000;
+        rawDt = Math.min(rawDt, 0.05);
+        lastTime = timestamp;
+        if (game.running) {
+          const timeScale = computeTimeScale();
+          const dt = rawDt * timeScale;
+          updateGame(rawDt, dt);
+        } else {
+          updateIdle(rawDt);
+        }
+        render();
+        requestAnimationFrame(gameLoop);
+      }
+
+      startButton.addEventListener('click', () => {
+        startGame();
+      });
+
+      restartButton.addEventListener('click', () => {
+        startGame();
+      });
+
+      menuButton.addEventListener('click', () => {
+        goToMenu();
+      });
+
+      resultMenuButton.addEventListener('click', () => {
+        goToMenu();
+      });
+
+      app.addEventListener('pointerdown', (event) => {
+        if (!game.running) return;
+        event.preventDefault();
+        toggleGravity();
+      }, { passive: false });
+
+      app.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' || event.code === 'ArrowUp') {
+          if (event.repeat) return;
+          event.preventDefault();
+          if (game.running) {
+            toggleGravity();
+          } else if (resultOverlay.classList.contains('active')) {
+            startGame();
+          } else if (startOverlay.classList.contains('active')) {
+            startGame();
+          }
+        } else if (event.code === 'Escape') {
+          event.preventDefault();
+          goToMenu();
+        }
+      });
+
+      window.addEventListener('resize', resizeCanvas);
+
+      resizeCanvas();
+      updateHud();
+      render();
+      requestAnimationFrame(gameLoop);
+    })();
+  </script>
+</body>
+</html>
