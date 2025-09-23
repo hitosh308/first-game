@@ -183,6 +183,13 @@
             <button id="menuEchoesBtn" type="button">探索を開始</button>
           </div>
         </article>
+        <article class="menu-card">
+          <h2>デッドゾーン：サバイバル</h2>
+          <p>廃墟都市で資源を管理しながら脱出を目指すサバイバルホラー。タッチ操作最適化のライト版で、モードと難易度を選んで緊張感ある探索と戦闘を体験しよう。</p>
+          <div class="menu-actions">
+            <button id="menuDeadzoneBtn" type="button">サバイバル開始</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
@@ -196,6 +203,7 @@
     const towerBtn = document.getElementById('menuTowerBtn');
     const runnerBtn = document.getElementById('menuRunnerBtn');
     const echoesBtn = document.getElementById('menuEchoesBtn');
+    const deadzoneBtn = document.getElementById('menuDeadzoneBtn');
 
     function getContinueData() {
       try {
@@ -262,6 +270,12 @@
     if (echoesBtn) {
       echoesBtn.addEventListener('click', () => {
         window.location.href = 'echoes.html';
+      });
+    }
+
+    if (deadzoneBtn) {
+      deadzoneBtn.addEventListener('click', () => {
+        window.location.href = 'deadzone.html';
       });
     }
 

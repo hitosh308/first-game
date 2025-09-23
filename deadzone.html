@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>デッドゾーン：サバイバル</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", "Hiragino Sans", system-ui, sans-serif;
+      --bg: radial-gradient(circle at top, rgba(28, 42, 64, 0.6), rgba(6, 8, 14, 0.92) 70%);
+      --panel: rgba(12, 16, 24, 0.86);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --accent: #8cf;
+      --accent-strong: #50c8ff;
+      --danger: #ff5967;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --page-padding: clamp(0.8rem, 3vw, 1.6rem);
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: var(--bg);
+      color: #f5f7fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--page-padding);
+      padding-top: calc(var(--page-padding) + var(--safe-top));
+      padding-bottom: calc(var(--page-padding) + var(--safe-bottom));
+      padding-left: calc(var(--page-padding) + var(--safe-left));
+      padding-right: calc(var(--page-padding) + var(--safe-right));
+      touch-action: none;
+    }
+    .app-shell {
+      position: relative;
+      width: min(1180px, 100%);
+      aspect-ratio: 16 / 9;
+      background: rgba(6, 10, 18, 0.92);
+      border-radius: clamp(0.8rem, 1.6vw, 1.4rem);
+      overflow: hidden;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.65);
+      display: flex;
+      justify-content: stretch;
+      align-items: stretch;
+    }
+    canvas#gameCanvas {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: radial-gradient(circle, rgba(12, 18, 28, 0.6), rgba(4, 6, 10, 0.96));
+    }
+    .hud-layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      padding: clamp(1rem, 3vw, 1.5rem);
+    }
+    .hud-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(0.5rem, 1.2vw, 0.9rem);
+      align-items: center;
+    }
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: clamp(0.6rem, 1vw, 1.2rem);
+    }
+    .hud-card {
+      pointer-events: auto;
+      background: rgba(12, 18, 28, 0.78);
+      border-radius: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.65rem 0.9rem;
+      min-width: 150px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
+    }
+    .hud-card h2 {
+      margin: 0;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .hud-card strong {
+      display: block;
+      font-size: clamp(0.95rem, 1.8vw, 1.3rem);
+      letter-spacing: 0.04em;
+    }
+    .bar {
+      position: relative;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+      margin-top: 0.4rem;
+    }
+    .bar span {
+      position: absolute;
+      inset: 0;
+      width: 0%;
+      border-radius: inherit;
+      transition: width 0.2s ease;
+    }
+    .bar-health span { background: linear-gradient(90deg, #ff6575, #ff314e); }
+    .bar-stamina span { background: linear-gradient(90deg, #66dcff, #3aa7ff); }
+    .bar-noise span { background: linear-gradient(90deg, rgba(255, 214, 102, 0.92), rgba(255, 132, 74, 0.9)); }
+    .ammo-indicator {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 0.25rem 0.75rem;
+      margin-top: 0.4rem;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: rgba(255, 255, 255, 0.72);
+    }
+    .inventory {
+      display: flex;
+      gap: 0.35rem;
+      margin-top: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .inventory-slot {
+      width: 36px;
+      height: 36px;
+      border-radius: 0.6rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: grid;
+      place-items: center;
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      color: rgba(255, 255, 255, 0.82);
+    }
+    .inventory-slot.empty {
+      opacity: 0.35;
+    }
+    .minimap {
+      width: clamp(120px, 18vw, 180px);
+      height: clamp(120px, 18vw, 180px);
+      border-radius: 1rem;
+      background: rgba(6, 10, 18, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      position: relative;
+      overflow: hidden;
+    }
+    canvas#minimapCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .wave-info {
+      background: rgba(20, 36, 56, 0.75);
+      border-radius: 0.7rem;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.76);
+      align-self: flex-start;
+    }
+    .touch-controls {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      padding: clamp(0.9rem, 2.2vw, 1.8rem);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+    }
+    .thumb-zone {
+      pointer-events: auto;
+      touch-action: none;
+      display: grid;
+      place-items: center;
+    }
+    .joystick {
+      position: relative;
+      width: clamp(120px, 24vw, 180px);
+      height: clamp(120px, 24vw, 180px);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(120, 200, 255, 0.16), rgba(120, 200, 255, 0.05));
+      border: 1px solid rgba(120, 200, 255, 0.35);
+      backdrop-filter: blur(6px);
+    }
+    .joystick-handle {
+      position: absolute;
+      width: 40%;
+      height: 40%;
+      border-radius: 50%;
+      background: rgba(120, 200, 255, 0.5);
+      border: 1px solid rgba(120, 200, 255, 0.8);
+      transform: translate(-50%, -50%);
+      left: 50%;
+      top: 50%;
+      transition: left 0.1s ease, top 0.1s ease;
+    }
+    .button-cluster {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(66px, clamp(70px, 18vw, 90px)));
+      grid-auto-rows: minmax(66px, clamp(70px, 18vw, 90px));
+      gap: clamp(0.5rem, 1.4vw, 0.9rem);
+    }
+    .touch-button {
+      pointer-events: auto;
+      border-radius: 1.4rem;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.08);
+      color: #f5f7fa;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      font-size: clamp(0.7rem, 1.4vw, 1rem);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 0.5rem;
+      backdrop-filter: blur(8px);
+    }
+    .touch-button.highlight {
+      background: rgba(128, 220, 255, 0.35);
+      border-color: rgba(128, 220, 255, 0.8);
+    }
+    .touch-button.small {
+      font-size: clamp(0.6rem, 1.2vw, 0.85rem);
+      border-radius: 1rem;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(6, 10, 16, 0.82);
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: clamp(1.4rem, 4vw, 2.6rem);
+    }
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .panel {
+      width: min(640px, 100%);
+      background: rgba(12, 18, 28, 0.92);
+      border-radius: 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+      padding: clamp(1.6rem, 4vw, 2.8rem);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1rem, 3vw, 1.8rem);
+      max-height: min(100%, 88vh);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: 0.05em;
+    }
+    p {
+      margin: 0;
+      line-height: 1.7;
+      color: rgba(245, 247, 250, 0.82);
+    }
+    .mode-list {
+      display: grid;
+      gap: 1rem;
+    }
+    .mode-card {
+      background: rgba(18, 26, 38, 0.9);
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1rem 1.1rem;
+      display: grid;
+      gap: 0.6rem;
+    }
+    .mode-card button {
+      justify-self: flex-start;
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    button {
+      font: inherit;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+      border-radius: 0.85rem;
+      border: 1px solid rgba(140, 220, 255, 0.55);
+      padding: 0.75rem 1.4rem;
+      background: linear-gradient(135deg, rgba(120, 200, 255, 0.2), rgba(120, 200, 255, 0.05));
+      color: #f5f7fa;
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(140, 220, 255, 0.35), rgba(120, 200, 255, 0.12));
+    }
+    button:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .toggle-row {
+      display: grid;
+      gap: 0.4rem;
+    }
+    label.option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.9rem;
+    }
+    .result-card {
+      padding: 0.75rem;
+      background: rgba(12, 18, 28, 0.85);
+      border-radius: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: grid;
+      gap: 0.3rem;
+    }
+    .result-card span {
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.68);
+    }
+    .result-card strong {
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .badge {
+      padding: 0.3rem 0.6rem;
+      background: rgba(120, 200, 255, 0.18);
+      border-radius: 999px;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      color: rgba(245, 247, 250, 0.78);
+      border: 1px solid rgba(120, 200, 255, 0.4);
+    }
+    .tutorial-tip {
+      position: absolute;
+      max-width: clamp(200px, 40vw, 300px);
+      background: rgba(18, 26, 38, 0.9);
+      border-radius: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.75rem 1rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      color: rgba(245, 247, 250, 0.85);
+      backdrop-filter: blur(10px);
+      pointer-events: auto;
+      animation: fadeIn 0.4s ease;
+    }
+    .tutorial-tip button {
+      margin-top: 0.6rem;
+      padding: 0.55rem 1rem;
+      font-size: 0.75rem;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 720px) {
+      body { padding: 0; }
+      .app-shell {
+        border-radius: 0;
+        width: 100vw;
+        height: 100vh;
+        aspect-ratio: auto;
+      }
+      .hud-layer {
+        padding: 1rem;
+      }
+      .hud-card { min-width: unset; }
+      .touch-controls { padding: 1rem; }
+      .button-cluster { grid-template-columns: repeat(2, minmax(62px, 28vw)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <canvas id="gameCanvas" width="1280" height="720" aria-label="ゲーム画面"></canvas>
+    <div class="hud-layer" aria-live="polite">
+      <div class="hud-top">
+        <div class="hud-card" id="healthCard">
+          <h2>HP / スタミナ</h2>
+          <strong id="healthText">100 / 100</strong>
+          <div class="bar bar-health"><span id="healthBar"></span></div>
+          <div class="bar bar-stamina"><span id="staminaBar"></span></div>
+        </div>
+        <div class="hud-card" id="ammoCard">
+          <h2>弾薬 / スコア</h2>
+          <strong id="ammoText">15 / 45</strong>
+          <div class="ammo-indicator">
+            <div>命中率</div><div id="accuracyText">0%</div>
+            <div>ヘッドショット</div><div id="headshotText">0</div>
+          </div>
+        </div>
+        <div class="hud-card" id="inventoryCard">
+          <h2>所持品</h2>
+          <div class="inventory" id="inventorySlots"></div>
+        </div>
+        <div class="wave-info" id="objectiveInfo">準備完了</div>
+        <div class="minimap">
+          <canvas id="minimapCanvas" width="180" height="180" aria-hidden="true"></canvas>
+        </div>
+      </div>
+      <div class="hud-bottom">
+        <div class="wave-info" id="timerInfo">00:00</div>
+        <div class="wave-info" id="difficultyInfo">NORMAL</div>
+      </div>
+    </div>
+    <div class="touch-controls" id="touchControls" aria-hidden="true">
+      <div class="thumb-zone" id="leftThumb">
+        <div class="joystick" id="joystick">
+          <div class="joystick-handle" id="joystickHandle"></div>
+        </div>
+      </div>
+      <div class="thumb-zone" id="rightThumb">
+        <div class="button-cluster" id="buttonCluster">
+          <div class="touch-button" id="shootButton">射撃</div>
+          <div class="touch-button" id="reloadButton">リロード</div>
+          <div class="touch-button" id="actionButton">調べる</div>
+          <div class="touch-button small" id="lightButton">ライト</div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay active" id="startOverlay" role="dialog" aria-modal="true">
+      <div class="panel">
+        <header>
+          <h1>デッドゾーン：サバイバル</h1>
+          <p>廃墟都市の安全区画が崩壊し、あなたは限られた資源で脱出を目指すことになった。スタミナと弾薬を節約しながら、音と光を管理して敵の群れを突破しよう。</p>
+        </header>
+        <section>
+          <h2>モードを選択</h2>
+          <div class="mode-list">
+            <article class="mode-card">
+              <h3>シナリオ：脱出</h3>
+              <p>鍵と装置を起動し、研究棟の脱出エレベーターを解放しよう。感染拡大前の救援を待て。</p>
+              <div class="button-row">
+                <button data-mode="scenario">このモードで開始</button>
+              </div>
+            </article>
+            <article class="mode-card">
+              <h3>サバイバル：耐久</h3>
+              <p>波状に押し寄せる敵を相手に生存時間と撃破数でスコアを稼ごう。物資投下を活用しながら最長記録を更新だ。</p>
+              <div class="button-row">
+                <button data-mode="survival">このモードで開始</button>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section>
+          <h2>難易度</h2>
+          <div class="button-row" id="difficultyButtons">
+            <button data-difficulty="easy">EASY</button>
+            <button data-difficulty="normal" class="active">NORMAL</button>
+            <button data-difficulty="hard">HARD</button>
+          </div>
+        </section>
+        <section class="toggle-row">
+          <label class="option">照準アシスト強度 <input type="range" id="aimSlider" min="0" max="1" step="0.1" value="0.6" /></label>
+          <label class="option">触覚フィードバック <input type="checkbox" id="vibrationToggle" checked /></label>
+          <label class="option">片手モード <input type="checkbox" id="oneHandToggle" /></label>
+          <label class="option">品質プリセット
+            <select id="qualitySelect">
+              <option value="high">高</option>
+              <option value="medium" selected>中</option>
+              <option value="low">低</option>
+            </select>
+          </label>
+        </section>
+        <section>
+          <div class="button-row">
+            <button id="continueButton" disabled>続きから</button>
+            <button id="clearRecordsButton">記録をリセット</button>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div class="overlay" id="pauseOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="panel">
+        <h2>ポーズ</h2>
+        <p>タッチまたはキーボードで操作を再開できます。戦術を見直し、資源を節約しよう。</p>
+        <div class="button-row">
+          <button id="resumeButton">再開</button>
+          <button id="restartButton">やり直す</button>
+          <button id="returnButton">メニューに戻る</button>
+        </div>
+        <section class="toggle-row">
+          <label class="option">照準アシスト <input type="range" id="pauseAimSlider" min="0" max="1" step="0.1" /></label>
+          <label class="option">スクリーンシェイク <input type="range" id="shakeSlider" min="0" max="1" step="0.1" value="0.6" /></label>
+          <label class="option">UI左右反転 <input type="checkbox" id="swapUiToggle" /></label>
+          <label class="option">ブラー抑制 <input type="checkbox" id="blurToggle" /></label>
+        </section>
+      </div>
+    </div>
+    <div class="overlay" id="resultOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="panel">
+        <header>
+          <h2 id="resultTitle">リザルト</h2>
+          <p id="resultSubtitle">スコアの詳細を確認しよう。</p>
+        </header>
+        <section class="results-grid">
+          <div class="result-card"><span>総合スコア</span><strong id="resultScore">0</strong></div>
+          <div class="result-card"><span>生存時間</span><strong id="resultTime">00:00</strong></div>
+          <div class="result-card"><span>撃破数</span><strong id="resultKills">0</strong></div>
+          <div class="result-card"><span>命中率</span><strong id="resultAccuracy">0%</strong></div>
+          <div class="result-card"><span>最大連続ヘッドショット</span><strong id="resultStreak">0</strong></div>
+          <div class="result-card"><span>探索率</span><strong id="resultExplore">0%</strong></div>
+        </section>
+        <section>
+          <h3>取得ボーナス</h3>
+          <div class="badge-row" id="resultBadges"></div>
+        </section>
+        <section>
+          <h3>ベスト記録</h3>
+          <p id="resultBest">-</p>
+        </section>
+        <div class="button-row">
+          <button id="resultRetry">再挑戦</button>
+          <button id="resultMenu">メニューへ戻る</button>
+        </div>
+      </div>
+    </div>
+    <div class="tutorial-tip" id="tutorialTip" hidden>
+      <p id="tutorialText">移動：左のバーチャルスティックをドラッグ。</p>
+      <button id="tutorialNext">次へ</button>
+    </div>
+  </div>
+  <script>
+  (() => {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const minimapCanvas = document.getElementById('minimapCanvas');
+    const minimapCtx = minimapCanvas.getContext('2d');
+    const appShell = document.getElementById('appShell');
+
+    const startOverlay = document.getElementById('startOverlay');
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    const resultOverlay = document.getElementById('resultOverlay');
+    const tutorialTip = document.getElementById('tutorialTip');
+
+    const aimSlider = document.getElementById('aimSlider');
+    const pauseAimSlider = document.getElementById('pauseAimSlider');
+    const vibrationToggle = document.getElementById('vibrationToggle');
+    const oneHandToggle = document.getElementById('oneHandToggle');
+    const qualitySelect = document.getElementById('qualitySelect');
+    const shakeSlider = document.getElementById('shakeSlider');
+    const swapUiToggle = document.getElementById('swapUiToggle');
+    const blurToggle = document.getElementById('blurToggle');
+
+    const healthBar = document.getElementById('healthBar');
+    const staminaBar = document.getElementById('staminaBar');
+    const ammoText = document.getElementById('ammoText');
+    const healthText = document.getElementById('healthText');
+    const accuracyText = document.getElementById('accuracyText');
+    const headshotText = document.getElementById('headshotText');
+    const objectiveInfo = document.getElementById('objectiveInfo');
+    const timerInfo = document.getElementById('timerInfo');
+    const difficultyInfo = document.getElementById('difficultyInfo');
+    const inventorySlots = document.getElementById('inventorySlots');
+
+    const joystick = document.getElementById('joystick');
+    const joystickHandle = document.getElementById('joystickHandle');
+    const shootButton = document.getElementById('shootButton');
+    const reloadButton = document.getElementById('reloadButton');
+    const actionButton = document.getElementById('actionButton');
+    const lightButton = document.getElementById('lightButton');
+    const touchControls = document.getElementById('touchControls');
+    const rightThumb = document.getElementById('rightThumb');
+    const leftThumb = document.getElementById('leftThumb');
+
+    const resumeButton = document.getElementById('resumeButton');
+    const restartButton = document.getElementById('restartButton');
+    const returnButton = document.getElementById('returnButton');
+    const tutorialNext = document.getElementById('tutorialNext');
+
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const resultScore = document.getElementById('resultScore');
+    const resultTime = document.getElementById('resultTime');
+    const resultKills = document.getElementById('resultKills');
+    const resultAccuracy = document.getElementById('resultAccuracy');
+    const resultStreak = document.getElementById('resultStreak');
+    const resultExplore = document.getElementById('resultExplore');
+    const resultBadges = document.getElementById('resultBadges');
+    const resultBest = document.getElementById('resultBest');
+    const resultRetry = document.getElementById('resultRetry');
+    const resultMenu = document.getElementById('resultMenu');
+
+    const continueButton = document.getElementById('continueButton');
+    const clearRecordsButton = document.getElementById('clearRecordsButton');
+
+    const difficultyButtons = Array.from(document.querySelectorAll('#difficultyButtons button'));
+    let selectedDifficulty = 'normal';
+    difficultyButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedDifficulty = btn.dataset.difficulty;
+        difficultyButtons.forEach(b => b.classList.toggle('active', b === btn));
+        difficultyInfo.textContent = selectedDifficulty.toUpperCase();
+      });
+    });
+
+    const state = {
+      scene: 'menu',
+      mode: 'scenario',
+      difficulty: 'normal',
+      running: false,
+      lastTimestamp: 0,
+      delta: 0,
+      time: 0,
+      survivalTime: 0,
+      headshotStreak: 0,
+      bestHeadshotStreak: 0,
+      kills: 0,
+      shotsFired: 0,
+      shotsHit: 0,
+      exploredCells: 0,
+      totalCells: 1,
+      wave: 0,
+      noiseLevel: 0,
+      lightOn: false,
+      paused: false,
+      inventoryHinted: false,
+      tutorialStep: 0,
+      autopause: false,
+      quality: 'medium',
+      aimAssist: 0.6,
+      touchAvailable: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+      gyroOffsetX: 0,
+      gyroOffsetY: 0,
+      bossIntroduced: false,
+      records: {},
+      pendingSave: null,
+      mapSeed: Math.random() * 1e9 | 0,
+    };
+
+    const player = {
+      x: 640,
+      y: 360,
+      angle: 0,
+      speed: 0,
+      vx: 0,
+      vy: 0,
+      radius: 18,
+      health: 100,
+      maxHealth: 100,
+      stamina: 100,
+      maxStamina: 100,
+      staminaRecovery: 18,
+      dashCooldown: 0,
+      dashWindow: 0,
+      dashVector: { x: 0, y: 0 },
+      ammo: 12,
+      clip: 12,
+      maxClip: 12,
+      reserve: 48,
+      reloadTime: 1.2,
+      reloadTimer: 0,
+      reloading: false,
+      fireRate: 0.2,
+      fireTimer: 0,
+      meleeCooldown: 0,
+      items: [],
+      maxItems: 5,
+      lightPower: 1,
+      visionRange: 260,
+      exploration: new Set(),
+      lastShotNoise: 0,
+    };
+
+    const world = {
+      width: 1600,
+      height: 1200,
+      rooms: [],
+      obstacles: [],
+      exit: { x: 1200, y: 220, radius: 40, locked: true, visible: false },
+      noiseSpots: [],
+      safeRooms: [],
+    };
+
+    const input = {
+      keys: new Set(),
+      mouse: { x: 0, y: 0, down: false },
+      joystick: { active: false, x: 0, y: 0, magnitude: 0, dashTap: 0, lastTapTime: 0 },
+      shootHeld: false,
+      actionHeld: false,
+      reloadHeld: false,
+      meleeQueued: false,
+      swapUi: false,
+      aimAssist: 0.6,
+    };
+
+    const arrays = {
+      enemies: [],
+      bullets: [],
+      particles: [],
+      pickups: [],
+      damageTexts: [],
+    };
+
+    const difficulties = {
+      easy: {
+        enemyHp: 0.8,
+        staminaDrain: 0.85,
+        ammoBonus: 12,
+        aimAssist: 0.8,
+        scoreMultiplier: 0.8,
+      },
+      normal: {
+        enemyHp: 1,
+        staminaDrain: 1,
+        ammoBonus: 0,
+        aimAssist: 0.6,
+        scoreMultiplier: 1,
+      },
+      hard: {
+        enemyHp: 1.2,
+        staminaDrain: 1.2,
+        ammoBonus: -6,
+        aimAssist: 0.4,
+        scoreMultiplier: 1.3,
+      },
+    };
+
+    const enemyTypes = {
+      zombie: { speed: 36, damage: 9, health: 65, noiseSense: 220, fov: 140, attackRate: 1.4, score: 30 },
+      runner: { speed: 88, damage: 14, health: 45, noiseSense: 320, fov: 170, attackRate: 1, score: 40 },
+      armored: { speed: 48, damage: 18, health: 150, noiseSense: 260, fov: 120, attackRate: 1.8, headshotOnly: true, score: 75 },
+      boss: { speed: 42, damage: 26, health: 650, noiseSense: 400, fov: 200, attackRate: 0.8, boss: true, score: 500 },
+    };
+
+    const pickupTypes = {
+      medkit: { label: '回復', effect: () => healPlayer(45) },
+      ammo: { label: '弾薬', effect: () => addAmmo(24) },
+      stamina: { label: 'スタミナ', effect: () => { player.stamina = Math.min(player.maxStamina, player.stamina + 40); } },
+      flash: { label: '閃光', effect: () => { triggerFlash(); } },
+      key: { label: '鍵', effect: () => unlockExit(); },
+      toolkit: { label: '工具', effect: () => reduceCooldowns(); },
+    };
+
+    const tutorialSteps = [
+      { text: '移動：左のバーチャルスティックをドラッグ、または WASD。', anchor: () => joystick.getBoundingClientRect() },
+      { text: '射撃：右下の「射撃」ボタンを長押し。PC はマウス左クリック。', anchor: () => shootButton.getBoundingClientRect() },
+      { text: 'ダッシュ：左スティックを二度タップ、PCは Shift。スタミナに注意。', anchor: () => joystick.getBoundingClientRect() },
+      { text: 'アクション：アイテムや装置で「調べる」ボタン。', anchor: () => actionButton.getBoundingClientRect() },
+      { text: 'ライト：暗所でライトを点灯し敵の目を眩ませよう。', anchor: () => lightButton.getBoundingClientRect() },
+    ];
+
+    function loadRecords() {
+      try {
+        const data = JSON.parse(localStorage.getItem('deadzone_records'));
+        if (data && typeof data === 'object') {
+          state.records = data;
+        }
+      } catch (err) {
+        console.warn('record load failed', err);
+      }
+    }
+
+    function saveRecords() {
+      try {
+        localStorage.setItem('deadzone_records', JSON.stringify(state.records));
+      } catch (err) {
+        console.warn('record save failed', err);
+      }
+    }
+
+    loadRecords();
+
+    function updateContinueButton() {
+      const key = localStorage.getItem('deadzone_continue');
+      continueButton.disabled = !key;
+    }
+
+    updateContinueButton();
+
+    function setOverlay(overlay, active) {
+      if (active) {
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+      } else {
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function vibrate(pattern) {
+      if (!vibrationToggle.checked) return;
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    }
+
+    function formatTime(sec) {
+      const minutes = Math.floor(sec / 60).toString().padStart(2, '0');
+      const seconds = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    }
+
+    function distance(ax, ay, bx, by) {
+      const dx = ax - bx;
+      const dy = ay - by;
+      return Math.hypot(dx, dy);
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function randRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function seededRandom(seed) {
+      const x = Math.sin(seed++) * 10000;
+      return x - Math.floor(x);
+    }
+
+    function seededShuffle(arr, seed) {
+      const clone = [...arr];
+      for (let i = clone.length - 1; i > 0; i--) {
+        const r = Math.floor(seededRandom(seed + i * 13.37) * (i + 1));
+        [clone[i], clone[r]] = [clone[r], clone[i]];
+      }
+      return clone;
+    }
+
+    function resetWorld(seed = Math.random() * 1e9 | 0) {
+      state.mapSeed = seed;
+      world.rooms = [];
+      world.obstacles = [];
+      world.safeRooms = [];
+      world.exit.locked = true;
+      world.exit.visible = false;
+      arrays.pickups.length = 0;
+      arrays.enemies.length = 0;
+      arrays.bullets.length = 0;
+      arrays.particles.length = 0;
+      arrays.damageTexts.length = 0;
+      state.wave = 0;
+      state.bossIntroduced = false;
+
+      const rng = () => seededRandom(seed++);
+      world.width = 1600;
+      world.height = 1200;
+
+      const baseRooms = [
+        { x: 160, y: 180, w: 320, h: 260 },
+        { x: 520, y: 220, w: 360, h: 280 },
+        { x: 980, y: 180, w: 360, h: 260 },
+        { x: 300, y: 560, w: 400, h: 300 },
+        { x: 760, y: 520, w: 420, h: 320 },
+        { x: 1120, y: 620, w: 340, h: 300 },
+        { x: 460, y: 900, w: 360, h: 240 },
+        { x: 980, y: 940, w: 420, h: 260 },
+      ];
+      world.rooms = seededShuffle(baseRooms, seed);
+      world.safeRooms = [world.rooms[0], world.rooms[3]];
+
+      world.exit.x = world.rooms[world.rooms.length - 1].x + 0.5 * world.rooms[world.rooms.length - 1].w;
+      world.exit.y = world.rooms[world.rooms.length - 1].y + 20;
+
+      const obstacleCount = 18;
+      for (let i = 0; i < obstacleCount; i++) {
+        const w = 60 + rng() * 120;
+        const h = 40 + rng() * 90;
+        const x = 100 + rng() * (world.width - 200 - w);
+        const y = 100 + rng() * (world.height - 200 - h);
+        world.obstacles.push({ x, y, w, h, solid: true });
+      }
+
+      for (const room of world.rooms) {
+        spawnPickupAt('ammo', room.x + room.w * rng(), room.y + room.h * rng());
+        if (rng() > 0.5) spawnPickupAt('medkit', room.x + room.w * rng(), room.y + room.h * rng());
+        if (rng() > 0.7) spawnPickupAt('stamina', room.x + room.w * rng(), room.y + room.h * rng());
+      }
+
+      spawnPickupAt('key', world.rooms[1].x + world.rooms[1].w / 2, world.rooms[1].y + world.rooms[1].h / 2);
+      spawnPickupAt('toolkit', world.rooms[2].x + world.rooms[2].w / 2, world.rooms[2].y + world.rooms[2].h / 2);
+      spawnPickupAt('flash', world.rooms[4].x + world.rooms[4].w / 2, world.rooms[4].y + world.rooms[4].h / 2);
+
+      spawnInitialEnemies();
+      updateExploration();
+    }
+    function spawnInitialEnemies() {
+      const baseSpawns = [
+        { type: 'zombie', count: 8 },
+        { type: 'runner', count: 4 },
+        { type: 'armored', count: 3 },
+      ];
+      if (state.mode === 'survival') baseSpawns.push({ type: 'runner', count: 4 });
+      baseSpawns.forEach(sp => {
+        for (let i = 0; i < sp.count; i++) {
+          const pos = randomSpawnPoint();
+          spawnEnemy(sp.type, pos.x, pos.y);
+        }
+      });
+    }
+
+    function spawnEnemy(type, x, y) {
+      const def = enemyTypes[type];
+      if (!def) return;
+      const hp = def.health * difficulties[state.difficulty].enemyHp;
+      arrays.enemies.push({
+        type,
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        radius: def.boss ? 38 : 20,
+        health: hp,
+        maxHealth: hp,
+        state: 'patrol',
+        patrolAngle: Math.random() * Math.PI * 2,
+        speed: def.speed,
+        damage: def.damage,
+        attackTimer: 0,
+        attackRate: def.attackRate,
+        noiseSense: def.noiseSense,
+        fov: def.fov,
+        headshotOnly: !!def.headshotOnly,
+        boss: !!def.boss,
+        score: def.score,
+        stunned: 0,
+        target: null,
+      });
+    }
+
+    function randomSpawnPoint() {
+      const margin = 120;
+      let x, y;
+      do {
+        x = margin + Math.random() * (world.width - margin * 2);
+        y = margin + Math.random() * (world.height - margin * 2);
+      } while (distance(x, y, player.x, player.y) < 180);
+      return { x, y };
+    }
+
+    function spawnPickupAt(type, x, y) {
+      const def = pickupTypes[type];
+      if (!def) return;
+      arrays.pickups.push({ type, x, y, radius: 18, active: true, label: def.label, glow: Math.random() * Math.PI * 2 });
+    }
+
+    function healPlayer(amount) {
+      player.health = clamp(player.health + amount, 0, player.maxHealth);
+      vibrate(20);
+    }
+
+    function addAmmo(amount) {
+      player.reserve = Math.min(player.reserve + amount + difficulties[state.difficulty].ammoBonus, 120);
+    }
+
+    function triggerFlash() {
+      arrays.enemies.forEach(e => {
+        if (distance(e.x, e.y, player.x, player.y) < 260) {
+          e.stunned = Math.max(e.stunned, 1.5);
+        }
+      });
+      state.noiseLevel += 40;
+      vibrate([20, 20, 20]);
+    }
+
+    function unlockExit() {
+      world.exit.locked = false;
+      world.exit.visible = true;
+      objectiveInfo.textContent = '脱出地点が解放された！';
+      addBadge('exit');
+    }
+
+    function reduceCooldowns() {
+      player.reloadTime *= 0.85;
+      player.fireRate *= 0.92;
+    }
+
+    function addBadge(type) {
+      arrays.particles.push({ type: 'badge', ttl: 2 });
+    }
+
+    function updateInventorySlots() {
+      inventorySlots.innerHTML = '';
+      const max = player.maxItems;
+      for (let i = 0; i < max; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'inventory-slot';
+        if (player.items[i]) {
+          slot.textContent = player.items[i].label;
+        } else {
+          slot.classList.add('empty');
+        }
+        inventorySlots.appendChild(slot);
+      }
+    }
+
+    function updateHUD() {
+      healthBar.style.width = `${(player.health / player.maxHealth) * 100}%`;
+      staminaBar.style.width = `${(player.stamina / player.maxStamina) * 100}%`;
+      healthText.textContent = `${Math.round(player.health)} / ${player.maxHealth}`;
+      ammoText.textContent = `${player.clip} / ${player.reserve}`;
+      const accuracy = state.shotsFired ? Math.round((state.shotsHit / state.shotsFired) * 100) : 0;
+      accuracyText.textContent = `${accuracy}%`;
+      headshotText.textContent = `${state.bestHeadshotStreak}`;
+      updateInventorySlots();
+    }
+
+    function exploreCurrentCell() {
+      const cellSize = 140;
+      const cx = Math.floor(player.x / cellSize);
+      const cy = Math.floor(player.y / cellSize);
+      const key = `${cx}:${cy}`;
+      if (!player.exploration.has(key)) {
+        player.exploration.add(key);
+        state.exploredCells = player.exploration.size;
+      }
+    }
+
+    function updateExploration() {
+      const cellSize = 140;
+      const cellsX = Math.ceil(world.width / cellSize);
+      const cellsY = Math.ceil(world.height / cellSize);
+      state.totalCells = cellsX * cellsY;
+    }
+
+    function drawMinimap() {
+      minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+      minimapCtx.fillStyle = 'rgba(20,30,44,0.85)';
+      minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+      const scaleX = minimapCanvas.width / world.width;
+      const scaleY = minimapCanvas.height / world.height;
+      minimapCtx.strokeStyle = 'rgba(120,200,255,0.35)';
+      minimapCtx.lineWidth = 1;
+      for (const room of world.rooms) {
+        minimapCtx.strokeRect(room.x * scaleX, room.y * scaleY, room.w * scaleX, room.h * scaleY);
+      }
+      minimapCtx.fillStyle = 'rgba(255,0,80,0.8)';
+      arrays.enemies.forEach(e => {
+        minimapCtx.beginPath();
+        minimapCtx.arc(e.x * scaleX, e.y * scaleY, e.boss ? 5 : 3, 0, Math.PI * 2);
+        minimapCtx.fill();
+      });
+      minimapCtx.fillStyle = 'rgba(120,200,255,0.9)';
+      minimapCtx.beginPath();
+      minimapCtx.arc(player.x * scaleX, player.y * scaleY, 4, 0, Math.PI * 2);
+      minimapCtx.fill();
+      if (!world.exit.locked) {
+        minimapCtx.fillStyle = 'rgba(255, 255, 120, 0.9)';
+        minimapCtx.beginPath();
+        minimapCtx.arc(world.exit.x * scaleX, world.exit.y * scaleY, 4, 0, Math.PI * 2);
+        minimapCtx.fill();
+      }
+    }
+
+    function setOneHandMode(enabled) {
+      if (enabled) {
+        touchControls.style.flexDirection = 'row-reverse';
+        leftThumb.style.alignItems = 'flex-end';
+        rightThumb.style.alignItems = 'flex-start';
+      } else {
+        touchControls.style.flexDirection = '';
+        leftThumb.style.alignItems = '';
+        rightThumb.style.alignItems = '';
+      }
+    }
+
+    oneHandToggle.addEventListener('change', () => setOneHandMode(oneHandToggle.checked));
+
+    swapUiToggle.addEventListener('change', () => {
+      input.swapUi = swapUiToggle.checked;
+      if (input.swapUi) {
+        touchControls.style.flexDirection = 'row-reverse';
+      } else {
+        touchControls.style.flexDirection = '';
+      }
+    });
+
+    aimSlider.addEventListener('input', () => {
+      state.aimAssist = parseFloat(aimSlider.value);
+      pauseAimSlider.value = state.aimAssist;
+      input.aimAssist = state.aimAssist;
+    });
+
+    pauseAimSlider.addEventListener('input', () => {
+      state.aimAssist = parseFloat(pauseAimSlider.value);
+      aimSlider.value = state.aimAssist;
+      input.aimAssist = state.aimAssist;
+    });
+
+    qualitySelect.addEventListener('change', () => {
+      state.quality = qualitySelect.value;
+    });
+
+    blurToggle.addEventListener('change', () => {
+      appShell.style.backdropFilter = blurToggle.checked ? 'none' : '';
+    });
+
+    clearRecordsButton.addEventListener('click', () => {
+      state.records = {};
+      saveRecords();
+      updateContinueButton();
+    });
+
+    continueButton.addEventListener('click', () => {
+      const saved = localStorage.getItem('deadzone_continue');
+      if (!saved) return;
+      try {
+        const data = JSON.parse(saved);
+        if (data) {
+          state.mode = data.mode || 'scenario';
+          state.difficulty = data.difficulty || 'normal';
+          selectedDifficulty = state.difficulty;
+          difficultyButtons.forEach(b => b.classList.toggle('active', b.dataset.difficulty === state.difficulty));
+          loadGameState(data);
+          beginGame();
+        }
+      } catch (err) {
+        console.warn('failed to load continue', err);
+      }
+    });
+
+    function loadGameState(data) {
+      resetWorld(data.mapSeed || Math.random() * 1e9 | 0);
+      player.x = data.player?.x ?? 640;
+      player.y = data.player?.y ?? 360;
+      player.health = data.player?.health ?? player.maxHealth;
+      player.stamina = data.player?.stamina ?? player.maxStamina;
+      player.clip = data.player?.clip ?? player.maxClip;
+      player.reserve = data.player?.reserve ?? 48;
+      player.items = data.player?.items ?? [];
+      state.time = data.time ?? 0;
+      state.wave = data.wave ?? 0;
+      state.mode = data.mode || 'scenario';
+      state.difficulty = data.difficulty || 'normal';
+      state.noiseLevel = data.noiseLevel ?? 0;
+      state.lightOn = data.lightOn ?? false;
+      if (data.exit) {
+        world.exit.locked = data.exit.locked;
+        world.exit.visible = data.exit.visible;
+      }
+      updateInventorySlots();
+      state.shotsFired = data.shotsFired ?? 0;
+      state.shotsHit = data.shotsHit ?? 0;
+      state.kills = data.kills ?? 0;
+      state.bestHeadshotStreak = data.bestHeadshotStreak ?? 0;
+    }
+
+    function saveContinue() {
+      const payload = {
+        mode: state.mode,
+        difficulty: state.difficulty,
+        time: state.time,
+        wave: state.wave,
+        player: {
+          x: player.x,
+          y: player.y,
+          health: player.health,
+          stamina: player.stamina,
+          clip: player.clip,
+          reserve: player.reserve,
+          items: player.items,
+        },
+        mapSeed: state.mapSeed,
+        noiseLevel: state.noiseLevel,
+        lightOn: state.lightOn,
+        exit: { ...world.exit },
+        shotsFired: state.shotsFired,
+        shotsHit: state.shotsHit,
+        kills: state.kills,
+        bestHeadshotStreak: state.bestHeadshotStreak,
+      };
+      try {
+        localStorage.setItem('deadzone_continue', JSON.stringify(payload));
+        updateContinueButton();
+      } catch (err) {
+        console.warn('continue save failed', err);
+      }
+    }
+
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.mode = btn.dataset.mode;
+        state.difficulty = selectedDifficulty;
+        beginGame();
+      });
+    });
+
+    function beginGame() {
+      resetWorld(Math.random() * 1e9 | 0);
+      state.running = true;
+      state.scene = 'game';
+      state.time = 0;
+      state.survivalTime = 0;
+      state.kills = 0;
+      state.shotsFired = 0;
+      state.shotsHit = 0;
+      state.bestHeadshotStreak = 0;
+      state.headshotStreak = 0;
+      state.noiseLevel = 0;
+      state.lightOn = false;
+      state.paused = false;
+      player.health = player.maxHealth;
+      player.stamina = player.maxStamina;
+      player.clip = player.maxClip;
+      player.reserve = 48 + difficulties[state.difficulty].ammoBonus;
+      player.items = [];
+      player.exploration.clear();
+      exploreCurrentCell();
+      state.tutorialStep = 0;
+      updateHUD();
+      setOverlay(startOverlay, false);
+      setOverlay(resultOverlay, false);
+      setOverlay(pauseOverlay, false);
+      tutorialTip.hidden = false;
+      showTutorialStep(0);
+      state.lastTimestamp = performance.now();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function showTutorialStep(index) {
+      if (!tutorialSteps[index]) {
+        tutorialTip.hidden = true;
+        return;
+      }
+      const step = tutorialSteps[index];
+      tutorialTip.hidden = false;
+      tutorialTip.querySelector('#tutorialText').textContent = step.text;
+      positionTutorial(step.anchor());
+    }
+
+    function positionTutorial(rect) {
+      if (!rect) return;
+      const tipRect = tutorialTip.getBoundingClientRect();
+      const offsetX = rect.left + rect.width / 2 - tipRect.width / 2;
+      const offsetY = rect.top - tipRect.height - 16;
+      tutorialTip.style.left = `${Math.max(16, offsetX)}px`;
+      tutorialTip.style.top = `${Math.max(16, offsetY)}px`;
+    }
+
+    tutorialNext.addEventListener('click', () => {
+      state.tutorialStep += 1;
+      if (state.tutorialStep >= tutorialSteps.length) {
+        tutorialTip.hidden = true;
+      } else {
+        showTutorialStep(state.tutorialStep);
+      }
+    });
+
+    resumeButton.addEventListener('click', () => togglePause(false));
+    restartButton.addEventListener('click', () => beginGame());
+    returnButton.addEventListener('click', () => {
+      togglePause(false);
+      state.scene = 'menu';
+      state.running = false;
+      setOverlay(startOverlay, true);
+    });
+
+    resultRetry.addEventListener('click', () => {
+      setOverlay(resultOverlay, false);
+      beginGame();
+    });
+
+    resultMenu.addEventListener('click', () => {
+      setOverlay(resultOverlay, false);
+      state.scene = 'menu';
+      state.running = false;
+      setOverlay(startOverlay, true);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && state.scene === 'game') {
+        togglePause(true);
+        state.autopause = true;
+      } else if (!document.hidden && state.autopause) {
+        state.autopause = false;
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (e.key === 'Escape') {
+        togglePause(!state.paused);
+      }
+      if (state.scene !== 'game') return;
+      input.keys.add(e.key.toLowerCase());
+      if (e.key === ' ') {
+        input.meleeQueued = true;
+      }
+      if (e.key === 'Shift') {
+        dash();
+      }
+      if (e.key.toLowerCase() === 'f') {
+        toggleLight();
+      }
+      if (e.key.toLowerCase() === 'r') {
+        requestReload();
+      }
+      if (e.key.toLowerCase() === 'e') {
+        interact();
+      }
+    });
+
+    document.addEventListener('keyup', e => {
+      input.keys.delete(e.key.toLowerCase());
+    });
+
+    canvas.addEventListener('mousedown', () => {
+      input.mouse.down = true;
+      input.shootHeld = true;
+    });
+    canvas.addEventListener('mouseup', () => {
+      input.mouse.down = false;
+      input.shootHeld = false;
+    });
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      input.mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+      input.mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    });
+
+    function setupTouchControls() {
+      if (!state.touchAvailable) return;
+      touchControls.setAttribute('aria-hidden', 'false');
+      const activeTouches = new Map();
+
+      const onPointerDown = (target, handler) => {
+        target.addEventListener('pointerdown', handler);
+        target.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+      };
+
+      onPointerDown(joystick, e => {
+        joystick.setPointerCapture(e.pointerId);
+        activeTouches.set(e.pointerId, 'joystick');
+        updateJoystick(e, true);
+      });
+
+      joystick.addEventListener('pointermove', e => {
+        if (activeTouches.get(e.pointerId) !== 'joystick') return;
+        updateJoystick(e, false);
+      });
+
+      joystick.addEventListener('pointerup', e => {
+        if (activeTouches.get(e.pointerId) !== 'joystick') return;
+        activeTouches.delete(e.pointerId);
+        resetJoystick();
+      });
+
+      function updateJoystick(e, start) {
+        const rect = joystick.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const dx = x - cx;
+        const dy = y - cy;
+        const dist = Math.hypot(dx, dy);
+        const max = rect.width * 0.45;
+        const ratio = Math.min(1, dist / max);
+        const angle = Math.atan2(dy, dx);
+        joystickHandle.style.left = `${cx + Math.cos(angle) * ratio * max}px`;
+        joystickHandle.style.top = `${cy + Math.sin(angle) * ratio * max}px`;
+        input.joystick.active = true;
+        input.joystick.x = Math.cos(angle) * ratio;
+        input.joystick.y = Math.sin(angle) * ratio;
+        input.joystick.magnitude = ratio;
+        if (start) {
+          const now = performance.now();
+          if (now - input.joystick.lastTapTime < 280) {
+            dash();
+          }
+          input.joystick.lastTapTime = now;
+        }
+      }
+
+      function resetJoystick() {
+        joystickHandle.style.left = '50%';
+        joystickHandle.style.top = '50%';
+        input.joystick.active = false;
+        input.joystick.x = 0;
+        input.joystick.y = 0;
+        input.joystick.magnitude = 0;
+      }
+
+      const handleButton = (button, onStart, onEnd) => {
+        button.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          button.setPointerCapture(e.pointerId);
+          button.classList.add('highlight');
+          onStart();
+          activeTouches.set(e.pointerId, button.id);
+        });
+        button.addEventListener('pointerup', e => {
+          e.preventDefault();
+          button.releasePointerCapture(e.pointerId);
+          button.classList.remove('highlight');
+          onEnd();
+          activeTouches.delete(e.pointerId);
+        });
+      };
+
+      handleButton(shootButton, () => {
+        input.shootHeld = true;
+        shootButton.dataset.startX = null;
+      }, () => {
+        input.shootHeld = false;
+      });
+
+      shootButton.addEventListener('pointerdown', e => {
+        shootButton.dataset.startX = e.clientX;
+        shootButton.dataset.startY = e.clientY;
+      });
+
+      shootButton.addEventListener('pointerup', e => {
+        if (!shootButton.dataset.startX) return;
+        const dx = e.clientX - Number(shootButton.dataset.startX);
+        const dy = e.clientY - Number(shootButton.dataset.startY);
+        const distance = Math.hypot(dx, dy);
+        if (distance > 60) {
+          input.meleeQueued = true;
+        }
+        shootButton.dataset.startX = null;
+      });
+
+      handleButton(reloadButton, () => {
+        requestReload();
+        input.reloadHeld = true;
+      }, () => {
+        input.reloadHeld = false;
+      });
+
+      handleButton(actionButton, () => {
+        input.actionHeld = true;
+        interact();
+      }, () => {
+        input.actionHeld = false;
+      });
+
+      handleButton(lightButton, () => {
+        toggleLight();
+      }, () => {});
+    }
+
+    setupTouchControls();
+    function togglePause(force) {
+      if (state.scene !== 'game') return;
+      state.paused = force;
+      setOverlay(pauseOverlay, state.paused);
+      if (!state.paused) {
+        state.lastTimestamp = performance.now();
+      }
+    }
+
+    function requestReload() {
+      if (player.reloading || player.clip >= player.maxClip || player.reserve <= 0) return;
+      player.reloading = true;
+      player.reloadTimer = player.reloadTime;
+      vibrate(16);
+    }
+
+    function toggleLight() {
+      state.lightOn = !state.lightOn;
+      if (state.lightOn) {
+        objectiveInfo.textContent = 'ライト ON：敵が反応する場合があります。';
+      } else {
+        objectiveInfo.textContent = 'ライト OFF：静かに進め。';
+      }
+    }
+
+    function dash() {
+      if (player.stamina <= 15 || player.dashCooldown > 0) return;
+      const dirX = input.joystick.active ? input.joystick.x : (input.keys.has('d') - input.keys.has('a'));
+      const dirY = input.joystick.active ? input.joystick.y : (input.keys.has('s') - input.keys.has('w'));
+      const mag = Math.hypot(dirX, dirY) || 1;
+      player.dashVector.x = dirX / mag;
+      player.dashVector.y = dirY / mag;
+      player.dashCooldown = 1.2;
+      player.stamina -= 18 * difficulties[state.difficulty].staminaDrain;
+      player.dashWindow = 0.22;
+      vibrate(30);
+    }
+
+    function interact() {
+      let interacted = false;
+      for (const pickup of arrays.pickups) {
+        if (!pickup.active) continue;
+        if (distance(player.x, player.y, pickup.x, pickup.y) < player.radius + pickup.radius + 10) {
+          if (player.items.length >= player.maxItems && pickup.type !== 'key' && pickup.type !== 'toolkit') {
+            objectiveInfo.textContent = '容量がいっぱいだ。セーフルームで整理しよう。';
+            interacted = true;
+            continue;
+          }
+          pickup.active = false;
+          player.items.push({ type: pickup.type, label: pickup.label });
+          objectiveInfo.textContent = `${pickup.label} を入手した。`;
+          vibrate(20);
+          interacted = true;
+        }
+      }
+
+      if (distance(player.x, player.y, world.exit.x, world.exit.y) < 80) {
+        if (state.mode === 'scenario') {
+          if (world.exit.locked) {
+            const hasKey = player.items.some(i => i.type === 'key');
+            if (hasKey) {
+              world.exit.locked = false;
+              world.exit.visible = true;
+              objectiveInfo.textContent = 'エレベーターが起動した。脱出地点へ。';
+            } else {
+              objectiveInfo.textContent = '鍵が必要だ。研究室を探索しよう。';
+            }
+          } else {
+            finishGame(true, '脱出に成功した！');
+          }
+        }
+        interacted = true;
+      }
+
+      if (!interacted && player.items.length) {
+        useItem();
+      }
+      updateInventorySlots();
+    }
+
+    function useItem() {
+      const item = player.items.shift();
+      if (!item) return;
+      const def = pickupTypes[item.type];
+      if (def && def.effect) def.effect();
+      objectiveInfo.textContent = `${item.label} を使用した。`;
+      updateInventorySlots();
+    }
+
+    function shootBullet(target) {
+      if (player.clip <= 0 || player.reloading) return;
+      player.clip -= 1;
+      state.shotsFired += 1;
+      player.fireTimer = player.fireRate;
+      const noise = 40;
+      state.noiseLevel += noise;
+      player.lastShotNoise = noise;
+      vibrate(10);
+
+      const targetAngle = target ? Math.atan2(target.y - player.y, target.x - player.x) : player.angle;
+      const spread = lerp(0.02, 0.2, 1 - state.aimAssist);
+      const angle = targetAngle + (Math.random() - 0.5) * spread;
+      const speed = 640;
+      const bullet = {
+        x: player.x + Math.cos(angle) * 24,
+        y: player.y + Math.sin(angle) * 24,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.6,
+        damage: 34,
+        headshot: target ? Math.random() < (0.35 + state.aimAssist * 0.4) : false,
+      };
+      arrays.bullets.push(bullet);
+    }
+
+    function meleeAttack() {
+      if (player.meleeCooldown > 0 || player.stamina < 10) return;
+      player.meleeCooldown = 0.8;
+      player.stamina -= 10 * difficulties[state.difficulty].staminaDrain;
+      vibrate([20, 40, 20]);
+      const range = 90;
+      let hit = false;
+      arrays.enemies.forEach(enemy => {
+        if (distance(player.x, player.y, enemy.x, enemy.y) < range + enemy.radius) {
+          enemy.health -= 40;
+          enemy.stunned = 0.5;
+          enemy.state = 'chase';
+          addDamageText(enemy, 40, true);
+          hit = true;
+        }
+      });
+      if (!hit) {
+        objectiveInfo.textContent = '空振りした。距離を詰めろ。';
+      }
+    }
+
+    function addDamageText(enemy, amount, melee = false) {
+      arrays.damageTexts.push({
+        x: enemy.x + (Math.random() - 0.5) * 20,
+        y: enemy.y - enemy.radius,
+        value: amount,
+        ttl: 0.8,
+        melee,
+      });
+    }
+
+    function spawnParticles(x, y, color, amount) {
+      if (state.quality === 'low') amount = Math.min(amount, 4);
+      for (let i = 0; i < amount; i++) {
+        arrays.particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 160,
+          vy: (Math.random() - 0.5) * 160,
+          ttl: 0.5 + Math.random() * 0.6,
+          color,
+        });
+      }
+    }
+
+    function updatePlayer(dt) {
+      let dirX = 0;
+      let dirY = 0;
+      if (input.joystick.active) {
+        dirX = input.joystick.x;
+        dirY = input.joystick.y;
+      } else {
+        dirX = (input.keys.has('d') ? 1 : 0) - (input.keys.has('a') ? 1 : 0);
+        dirY = (input.keys.has('s') ? 1 : 0) - (input.keys.has('w') ? 1 : 0);
+      }
+      const speed = 140;
+      let magnitude = Math.hypot(dirX, dirY);
+      if (magnitude > 1) {
+        dirX /= magnitude;
+        dirY /= magnitude;
+        magnitude = 1;
+      }
+      let currentSpeed = speed * magnitude;
+      if (input.keys.has('shift') || (input.joystick.magnitude > 0.75)) {
+        if (player.stamina > 1) {
+          currentSpeed *= 1.65;
+          player.stamina -= 28 * dt * difficulties[state.difficulty].staminaDrain;
+          state.noiseLevel += 30 * dt;
+        } else {
+          objectiveInfo.textContent = 'スタミナが枯渇した。休め。';
+        }
+      }
+      if (!input.keys.has('shift') && input.joystick.magnitude <= 0.75) {
+        player.stamina = clamp(player.stamina + player.staminaRecovery * dt, 0, player.maxStamina);
+      }
+
+      player.vx = lerp(player.vx, dirX * currentSpeed, 0.4);
+      player.vy = lerp(player.vy, dirY * currentSpeed, 0.4);
+
+      if (player.dashWindow > 0) {
+        const dashSpeed = 420;
+        player.vx = player.dashVector.x * dashSpeed;
+        player.vy = player.dashVector.y * dashSpeed;
+        player.dashWindow -= dt;
+      }
+
+      const nextX = player.x + player.vx * dt;
+      const nextY = player.y + player.vy * dt;
+      if (!collides(nextX, player.y)) player.x = clamp(nextX, player.radius, world.width - player.radius);
+      if (!collides(player.x, nextY)) player.y = clamp(nextY, player.radius, world.height - player.radius);
+
+      player.dashCooldown = Math.max(0, player.dashCooldown - dt);
+      player.fireTimer = Math.max(0, player.fireTimer - dt);
+      player.meleeCooldown = Math.max(0, player.meleeCooldown - dt);
+
+      if (player.reloading) {
+        player.reloadTimer -= dt;
+        if (player.reloadTimer <= 0) {
+          const needed = player.maxClip - player.clip;
+          const load = Math.min(needed, player.reserve);
+          player.clip += load;
+          player.reserve -= load;
+          player.reloading = false;
+          vibrate(10);
+        }
+      }
+
+      const target = findAutoTarget();
+      if (input.shootHeld && player.fireTimer <= 0) {
+        shootBullet(target);
+      }
+      if (input.meleeQueued) {
+        meleeAttack();
+        input.meleeQueued = false;
+      }
+
+      if (state.lightOn) {
+        state.noiseLevel += 5 * dt;
+      }
+
+      exploreCurrentCell();
+    }
+
+    function collides(x, y) {
+      for (const obstacle of world.obstacles) {
+        if (x > obstacle.x && x < obstacle.x + obstacle.w && y > obstacle.y && y < obstacle.y + obstacle.h) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function findAutoTarget() {
+      const range = 560;
+      let best = null;
+      let bestScore = Infinity;
+      arrays.enemies.forEach(enemy => {
+        const d = distance(player.x, player.y, enemy.x, enemy.y);
+        if (d < range) {
+          const score = d - (enemy.type === 'runner' ? 40 : 0) - (enemy.type === 'boss' ? 60 : 0);
+          if (score < bestScore) {
+            best = enemy;
+            bestScore = score;
+          }
+        }
+      });
+      if (best && state.aimAssist > 0) {
+        return { x: best.x, y: best.y, enemy: best };
+      }
+      return null;
+    }
+
+    function updateEnemies(dt) {
+      const { enemies } = arrays;
+      enemies.forEach(enemy => {
+        if (enemy.health <= 0) return;
+        if (enemy.stunned > 0) {
+          enemy.stunned -= dt;
+          return;
+        }
+        const dist = distance(player.x, player.y, enemy.x, enemy.y);
+        if (dist < enemy.fov || state.noiseLevel > enemy.noiseSense) {
+          enemy.state = 'chase';
+        }
+        if (state.lightOn && dist < 180) {
+          enemy.stunned = 0.4;
+          return;
+        }
+        if (enemy.state === 'chase') {
+          const dirX = player.x - enemy.x;
+          const dirY = player.y - enemy.y;
+          const mag = Math.hypot(dirX, dirY) || 1;
+          enemy.vx = (dirX / mag) * enemy.speed;
+          enemy.vy = (dirY / mag) * enemy.speed;
+        } else {
+          enemy.vx = Math.cos(enemy.patrolAngle) * enemy.speed * 0.3;
+          enemy.vy = Math.sin(enemy.patrolAngle) * enemy.speed * 0.3;
+          if (Math.random() < 0.01) enemy.patrolAngle += (Math.random() - 0.5) * 0.8;
+        }
+        const nx = enemy.x + enemy.vx * dt;
+        const ny = enemy.y + enemy.vy * dt;
+        if (!collides(nx, enemy.y)) enemy.x = clamp(nx, enemy.radius, world.width - enemy.radius);
+        if (!collides(enemy.x, ny)) enemy.y = clamp(ny, enemy.radius, world.height - enemy.radius);
+
+        if (dist < enemy.radius + player.radius + 6) {
+          enemy.attackTimer -= dt;
+          if (enemy.attackTimer <= 0) {
+            applyDamage(enemy.damage);
+            enemy.attackTimer = enemy.attackRate;
+          }
+        } else {
+          enemy.attackTimer = Math.max(enemy.attackTimer, 0);
+        }
+      });
+    }
+
+    function applyDamage(amount) {
+      player.health -= amount;
+      vibrate([30, 60, 30]);
+      if (player.health <= 0) {
+        finishGame(false, '感染により戦闘不能となった。');
+      }
+    }
+
+    function updateBullets(dt) {
+      const { bullets, enemies } = arrays;
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bullet = bullets[i];
+        bullet.x += bullet.vx * dt;
+        bullet.y += bullet.vy * dt;
+        bullet.life -= dt;
+        let hitEnemy = null;
+        for (const enemy of enemies) {
+          if (enemy.health <= 0) continue;
+          if (distance(bullet.x, bullet.y, enemy.x, enemy.y) < enemy.radius) {
+            hitEnemy = enemy;
+            break;
+          }
+        }
+        if (hitEnemy) {
+          const isHeadshot = bullet.headshot || bullet.damage > 40;
+          if (hitEnemy.headshotOnly && !isHeadshot) {
+            addDamageText(hitEnemy, 0);
+          } else {
+            hitEnemy.health -= bullet.damage * (isHeadshot ? 1.6 : 1);
+            addDamageText(hitEnemy, Math.round(bullet.damage * (isHeadshot ? 1.6 : 1)));
+            spawnParticles(hitEnemy.x, hitEnemy.y, isHeadshot ? '#ffd66a' : '#ff6677', state.quality === 'high' ? 12 : 6);
+            state.shotsHit += 1;
+            if (isHeadshot) {
+              state.headshotStreak += 1;
+              state.bestHeadshotStreak = Math.max(state.bestHeadshotStreak, state.headshotStreak);
+            } else {
+              state.headshotStreak = 0;
+            }
+            if (hitEnemy.health <= 0) {
+              state.kills += 1;
+              spawnPickupDrop(hitEnemy);
+              if (hitEnemy.boss) {
+                objectiveInfo.textContent = 'ボスを撃破！脱出経路が開く。';
+                world.exit.visible = true;
+                world.exit.locked = false;
+              }
+            }
+          }
+          bullets.splice(i, 1);
+          continue;
+        }
+        if (bullet.life <= 0) {
+          bullets.splice(i, 1);
+          state.headshotStreak = 0;
+        }
+      }
+    }
+
+    function spawnPickupDrop(enemy) {
+      if (Math.random() < 0.4) {
+        spawnPickupAt('ammo', enemy.x, enemy.y);
+      }
+      if (Math.random() < 0.25) {
+        spawnPickupAt('medkit', enemy.x + randRange(-20, 20), enemy.y + randRange(-20, 20));
+      }
+      if (!state.bossIntroduced && state.mode === 'survival' && state.wave >= 3 && Math.random() < 0.1) {
+        spawnEnemy('boss', enemy.x + randRange(-120, 120), enemy.y + randRange(-120, 120));
+        state.bossIntroduced = true;
+        objectiveInfo.textContent = '大型ボス接近：ギミックを活用せよ。';
+      }
+    }
+
+    function updatePickups(dt) {
+      arrays.pickups.forEach(p => {
+        p.glow += dt * 3;
+      });
+    }
+
+    function updateParticles(dt) {
+      for (let i = arrays.particles.length - 1; i >= 0; i--) {
+        const p = arrays.particles[i];
+        if (p.ttl !== undefined) {
+          p.ttl -= dt;
+          if (p.ttl <= 0) {
+            arrays.particles.splice(i, 1);
+            continue;
+          }
+        }
+        if (p.vx !== undefined) {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.92;
+          p.vy *= 0.92;
+        }
+      }
+      for (let i = arrays.damageTexts.length - 1; i >= 0; i--) {
+        const dtxt = arrays.damageTexts[i];
+        dtxt.ttl -= dt;
+        dtxt.y -= 30 * dt;
+        if (dtxt.ttl <= 0) arrays.damageTexts.splice(i, 1);
+      }
+    }
+
+    function updateNoise(dt) {
+      state.noiseLevel = Math.max(0, state.noiseLevel - dt * 35);
+    }
+
+    function updateWaves(dt) {
+      if (state.mode !== 'survival') return;
+      state.survivalTime += dt;
+      const waveInterval = 35;
+      if (state.survivalTime > (state.wave + 1) * waveInterval) {
+        state.wave += 1;
+        objectiveInfo.textContent = `ウェーブ ${state.wave + 1}`;
+        for (let i = 0; i < 4 + state.wave; i++) {
+          const pos = randomSpawnPoint();
+          const type = Math.random() < 0.6 ? 'zombie' : Math.random() < 0.5 ? 'runner' : 'armored';
+          spawnEnemy(type, pos.x, pos.y);
+        }
+        if (state.wave % 3 === 2) {
+          const pos = randomSpawnPoint();
+          spawnEnemy('boss', pos.x, pos.y);
+        }
+      }
+    }
+
+    function updateExitVisibility(dt) {
+      if (state.mode === 'scenario' && !world.exit.locked) {
+        world.exit.visible = true;
+      }
+      if (state.mode === 'survival') {
+        world.exit.visible = false;
+      }
+    }
+
+    function updateGame(dt) {
+      if (state.paused) return;
+      state.time += dt;
+      updatePlayer(dt);
+      updateEnemies(dt);
+      updateBullets(dt);
+      updatePickups(dt);
+      updateParticles(dt);
+      updateNoise(dt);
+      updateWaves(dt);
+      updateExitVisibility(dt);
+      updateHUD();
+      drawMinimap();
+
+      if (state.time > 120 && state.mode === 'scenario' && !state.bossIntroduced) {
+        state.bossIntroduced = true;
+        const pos = randomSpawnPoint();
+        spawnEnemy('boss', pos.x, pos.y);
+        objectiveInfo.textContent = '大型ボス出現：弱点のコアを狙え。';
+      }
+    }
+
+    function renderGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      const cameraX = clamp(player.x - canvas.width / 2, 0, world.width - canvas.width);
+      const cameraY = clamp(player.y - canvas.height / 2, 0, world.height - canvas.height);
+      ctx.translate(-cameraX, -cameraY);
+
+      ctx.fillStyle = '#101722';
+      ctx.fillRect(0, 0, world.width, world.height);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      world.rooms.forEach(room => {
+        ctx.fillStyle = 'rgba(40,52,70,0.3)';
+        ctx.fillRect(room.x, room.y, room.w, room.h);
+        ctx.strokeRect(room.x, room.y, room.w, room.h);
+      });
+
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      world.obstacles.forEach(ob => {
+        ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+      });
+
+      if (world.exit.visible) {
+        ctx.strokeStyle = 'rgba(255,255,160,0.8)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(world.exit.x, world.exit.y, world.exit.radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      arrays.pickups.forEach(p => {
+        if (!p.active) return;
+        const glow = (Math.sin(p.glow) * 0.4 + 0.6);
+        ctx.fillStyle = `rgba(120,200,255,${0.5 * glow})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(12,16,20,0.7)';
+        ctx.fillRect(p.x - p.radius / 2, p.y - 4, p.radius, 8);
+      });
+
+      arrays.enemies.forEach(enemy => {
+        if (enemy.health <= 0) return;
+        ctx.fillStyle = enemy.type === 'runner' ? '#ff7666' : enemy.type === 'armored' ? '#8894ff' : enemy.type === 'boss' ? '#ffb347' : '#8cffd1';
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+        ctx.fill();
+        const hpRatio = clamp(enemy.health / enemy.maxHealth, 0, 1);
+        ctx.fillStyle = '#ff4455';
+        ctx.fillRect(enemy.x - enemy.radius, enemy.y - enemy.radius - 10, enemy.radius * 2 * hpRatio, 4);
+      });
+
+      ctx.fillStyle = '#3aa7ff';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      arrays.bullets.forEach(b => {
+        ctx.fillStyle = '#ffd166';
+        ctx.fillRect(b.x - 2, b.y - 2, 4, 4);
+      });
+
+      arrays.particles.forEach(p => {
+        if (p.color) {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, 3, 3);
+        }
+      });
+
+      arrays.damageTexts.forEach(d => {
+        ctx.fillStyle = d.melee ? '#8cf' : '#ffd166';
+        ctx.font = '16px Segoe UI';
+        ctx.fillText(d.value, d.x, d.y);
+      });
+
+      if (state.lightOn) {
+        const gradient = ctx.createRadialGradient(player.x, player.y, 20, player.x, player.y, player.visionRange);
+        gradient.addColorStop(0, 'rgba(255,255,200,0.35)');
+        gradient.addColorStop(1, 'rgba(255,255,200,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.visionRange, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+
+      if (state.paused) {
+        ctx.fillStyle = 'rgba(6,10,16,0.45)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function finishGame(victory, message) {
+      state.running = false;
+      setOverlay(resultOverlay, true);
+      state.scene = 'result';
+      const score = calculateScore(victory);
+      const accuracy = state.shotsFired ? Math.round((state.shotsHit / state.shotsFired) * 100) : 0;
+      const exploreRate = state.totalCells ? Math.min(100, Math.round((state.exploredCells / state.totalCells) * 100)) : 0;
+      resultTitle.textContent = victory ? '脱出成功' : '任務失敗';
+      resultSubtitle.textContent = message;
+      resultScore.textContent = `${score}`;
+      resultTime.textContent = formatTime(state.time);
+      resultKills.textContent = `${state.kills}`;
+      resultAccuracy.textContent = `${accuracy}%`;
+      resultStreak.textContent = `${state.bestHeadshotStreak}`;
+      resultExplore.textContent = `${exploreRate}%`;
+      const badges = [];
+      if (state.time >= 600) badges.push('10分生存');
+      if (state.bestHeadshotStreak >= 5) badges.push('ヘッドショット名人');
+      if (player.health === player.maxHealth) badges.push('ノーダメージ');
+      if (accuracy >= 70) badges.push('精密射撃');
+      resultBadges.innerHTML = '';
+      badges.forEach(b => {
+        const span = document.createElement('span');
+        span.className = 'badge';
+        span.textContent = b;
+        resultBadges.appendChild(span);
+      });
+      const recordKey = `${state.mode}_${state.difficulty}`;
+      const prev = state.records[recordKey];
+      if (!prev || prev.score < score) {
+        state.records[recordKey] = { score, time: state.time, kills: state.kills, accuracy };
+        saveRecords();
+      }
+      const best = state.records[recordKey];
+      if (best) {
+        resultBest.textContent = `ベスト：${best.score} / ${formatTime(best.time)} / 撃破 ${best.kills}`;
+      } else {
+        resultBest.textContent = '-';
+      }
+      localStorage.removeItem('deadzone_continue');
+      updateContinueButton();
+    }
+
+    function calculateScore(victory) {
+      const baseTime = state.time * 12;
+      const killScore = state.kills * 40;
+      const accuracy = state.shotsFired ? state.shotsHit / state.shotsFired : 0;
+      const accuracyBonus = Math.round(accuracy * 220);
+      const exploreBonus = Math.round((state.exploredCells / state.totalCells) * 400);
+      const streakBonus = state.bestHeadshotStreak * 30;
+      const healthBonus = Math.round((player.health / player.maxHealth) * 180);
+      const victoryBonus = victory ? 500 : 0;
+      const multiplier = difficulties[state.difficulty].scoreMultiplier;
+      return Math.round((baseTime + killScore + accuracyBonus + exploreBonus + streakBonus + healthBonus + victoryBonus) * multiplier);
+    }
+
+    function gameLoop(timestamp) {
+      if (!state.running) return;
+      const dt = Math.min(0.05, (timestamp - state.lastTimestamp) / 1000);
+      state.lastTimestamp = timestamp;
+      updateGame(dt);
+      renderGame();
+      timerInfo.textContent = formatTime(state.time);
+      requestAnimationFrame(gameLoop);
+    }
+
+    resultOverlay.addEventListener('transitionend', () => {
+      if (!resultOverlay.classList.contains('active')) {
+        state.scene = 'menu';
+      }
+    });
+
+    pauseOverlay.addEventListener('transitionend', () => {
+      if (!pauseOverlay.classList.contains('active')) {
+        state.paused = false;
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (!tutorialTip.hidden && tutorialSteps[state.tutorialStep]) {
+        positionTutorial(tutorialSteps[state.tutorialStep].anchor());
+      }
+    });
+
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientation', e => {
+        if (e.gamma == null || e.beta == null) return;
+        state.gyroOffsetX = e.gamma / 90;
+        state.gyroOffsetY = e.beta / 90;
+      });
+    }
+
+    shootButton.addEventListener('contextmenu', e => e.preventDefault());
+    reloadButton.addEventListener('contextmenu', e => e.preventDefault());
+    actionButton.addEventListener('contextmenu', e => e.preventDefault());
+
+    setOneHandMode(oneHandToggle.checked);
+    pauseAimSlider.value = aimSlider.value;
+    difficultyInfo.textContent = selectedDifficulty.toUpperCase();
+    updateInventorySlots();
+    updateHUD();
+
+    document.addEventListener('keydown', e => {
+      if (e.key.toLowerCase() === 'p') {
+        togglePause(!state.paused);
+      }
+    });
+
+    function persistProgress() {
+      if (state.scene === 'game' && state.running) {
+        saveContinue();
+      }
+    }
+
+    window.addEventListener('beforeunload', persistProgress);
+  })();
+  </script>
+</body>
+</html>
