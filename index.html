@@ -155,6 +155,13 @@
             <button id="menuTowerBtn" type="button">エンドレスクライム</button>
           </div>
         </article>
+        <article class="menu-card">
+          <h2>メトロランナー：リミックス</h2>
+          <p>地下鉄のホームと車両を駆け抜ける無限ランナー。ジャンプとスライディング、ダッシュとスキルで暴走ドローンを蹴散らし、最長距離とベストスコアを更新しよう。</p>
+          <div class="menu-actions">
+            <button id="menuRunnerBtn" type="button">ハイパーラン</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
@@ -166,6 +173,7 @@
     const survivalBtn = document.getElementById('menuShooterSurvivalBtn');
     const bladeBtn = document.getElementById('menuBladeBtn');
     const towerBtn = document.getElementById('menuTowerBtn');
+    const runnerBtn = document.getElementById('menuRunnerBtn');
 
     function getContinueData() {
       try {
@@ -220,6 +228,12 @@
     if (towerBtn) {
       towerBtn.addEventListener('click', () => {
         window.location.href = 'floor99.html';
+      });
+    }
+
+    if (runnerBtn) {
+      runnerBtn.addEventListener('click', () => {
+        window.location.href = 'metrorunner.html';
       });
     }
 
