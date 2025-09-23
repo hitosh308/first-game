@@ -19,16 +19,25 @@
       --door-blue: #3f8cff;
       --door-red: #ff5f6d;
       --text: #f5f7fa;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
       font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
+      min-height: 100dvh;
       background: radial-gradient(circle at top, rgba(80,120,200,0.18), transparent 55%), var(--bg);
       color: var(--text);
       display: flex;
       flex-direction: column;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
     }
     button, select {
       font: inherit;
@@ -75,7 +84,7 @@
       background: rgba(8, 12, 20, 0.78);
       backdrop-filter: blur(12px);
       position: sticky;
-      top: 0;
+      top: var(--safe-top);
       z-index: 30;
     }
     .shooter-controls {
@@ -156,9 +165,11 @@
       align-items: center;
       background: rgba(10, 14, 24, 0.92);
       color: var(--text);
-      padding: 1.5rem;
+      padding: clamp(1.2rem, 4vw, 2rem);
       gap: 1rem;
       text-align: center;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .shooter-overlay.hidden { display: none; }
     .shooter-panel {
