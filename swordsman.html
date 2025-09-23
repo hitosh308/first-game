@@ -348,6 +348,27 @@
     let renderedLives = -1;
 
     const STORAGE_KEY = 'bt_blade_best';
+    const storage = {
+      available: true,
+      get(key) {
+        if (!this.available) return null;
+        try {
+          return window.localStorage.getItem(key);
+        } catch (err) {
+          this.available = false;
+          return null;
+        }
+      },
+      set(key, value) {
+        if (!this.available) return;
+        try {
+          window.localStorage.setItem(key, value);
+        } catch (err) {
+          this.available = false;
+        }
+      },
+    };
+    const storedBest = storage.get(STORAGE_KEY);
     const config = {
       width: 960,
       height: 540,
@@ -407,7 +428,7 @@
       status: 'title',
       difficulty: 'normal',
       score: 0,
-      best: Number(localStorage.getItem(STORAGE_KEY)) || 0,
+      best: storedBest ? Number(storedBest) || 0 : 0,
       comboMultiplier: 1,
       comboTimer: 0,
       comboPulse: 0,
@@ -863,7 +884,7 @@
     function endGame() {
       state.status = 'gameover';
       updateHUD();
-      localStorage.setItem(STORAGE_KEY, String(state.best));
+      storage.set(STORAGE_KEY, String(state.best));
       finalScoreEl.textContent = Math.round(state.score).toLocaleString('ja-JP');
       finalBestEl.textContent = Math.round(state.best).toLocaleString('ja-JP');
       gameOverOverlay.classList.remove('hidden');
