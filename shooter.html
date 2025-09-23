@@ -382,6 +382,8 @@
       pointerActive: false,
       targetX: 0,
       targetY: 0,
+      pointerOffsetX: 0,
+      pointerOffsetY: 0,
       invincible: 0
     };
 
@@ -478,19 +480,21 @@
         try { canvas.setPointerCapture(event.pointerId); } catch (err) {}
       }
       activePointerId = event.pointerId;
-      const pos = pointerToCanvas(event);
+      const pos = pointerToCanvas(event, { clampToBounds: false });
       player.pointerActive = true;
-      player.targetX = pos.x;
-      player.targetY = pos.y;
+      player.pointerOffsetX = player.x - pos.x;
+      player.pointerOffsetY = player.y - pos.y;
+      player.targetX = clamp(player.x, player.radius, width - player.radius);
+      player.targetY = clamp(player.y, player.radius, height - player.radius);
     }
 
     function handlePointerMove(event) {
       if (!state.active) return;
       if (activePointerId !== null && event.pointerId !== activePointerId) return;
       if (!player.pointerActive) return;
-      const pos = pointerToCanvas(event);
-      player.targetX = pos.x;
-      player.targetY = pos.y;
+      const pos = pointerToCanvas(event, { clampToBounds: false });
+      player.targetX = clamp(pos.x + player.pointerOffsetX, player.radius, width - player.radius);
+      player.targetY = clamp(pos.y + player.pointerOffsetY, player.radius, height - player.radius);
     }
 
     function handlePointerUp(event) {
@@ -652,6 +656,10 @@
       player.y = height - 80;
       player.fireCooldown = 0;
       player.pointerActive = false;
+      player.pointerOffsetX = 0;
+      player.pointerOffsetY = 0;
+      player.targetX = player.x;
+      player.targetY = player.y;
       player.invincible = 1.0;
       startOverlay.classList.add('hidden');
       gameOverOverlay.classList.add('hidden');
@@ -1489,11 +1497,14 @@
       return dx * dx + dy * dy <= (r1 + r2) * (r1 + r2);
     }
 
-    function pointerToCanvas(event) {
+    function pointerToCanvas(event, { clampToBounds = true } = {}) {
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
       const x = rect.width ? ((event.clientX - rect.left) / rect.width) * width : 0;
       const y = rect.height ? ((event.clientY - rect.top) / rect.height) * height : 0;
+      if (!clampToBounds) {
+        return { x, y };
+      }
       return {
         x: clamp(x, player.radius, width - player.radius),
         y: clamp(y, player.radius, height - player.radius)
