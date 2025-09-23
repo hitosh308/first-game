@@ -177,6 +177,13 @@
           </div>
         </article>
         <article class="menu-card">
+          <h2>スカイダイブ・インフェルノ</h2>
+          <p>無限に広がる空と灼熱の深層を落下し続けるスカイダイバーアクション。燃え盛るリングを潜り抜け、アイテムと加速モードでスコアを稼ごう。</p>
+          <div class="menu-actions">
+            <button id="menuSkydiveBtn" type="button">フリーフォール</button>
+          </div>
+        </article>
+        <article class="menu-card">
           <h2>エコーズ・オブ・シティ</h2>
           <p>廃墟化した未来都市を探索するメトロイドヴァニア。スキルを解放して行動範囲を広げ、エナジーオーブで強化しながらコア制御AIに挑もう。</p>
           <div class="menu-actions">
@@ -209,6 +216,7 @@
     const bladeBtn = document.getElementById('menuBladeBtn');
     const towerBtn = document.getElementById('menuTowerBtn');
     const runnerBtn = document.getElementById('menuRunnerBtn');
+    const skydiveBtn = document.getElementById('menuSkydiveBtn');
     const echoesBtn = document.getElementById('menuEchoesBtn');
     const deadzoneBtn = document.getElementById('menuDeadzoneBtn');
     const swapBtn = document.getElementById('menuSwapBtn');
@@ -272,6 +280,12 @@
     if (runnerBtn) {
       runnerBtn.addEventListener('click', () => {
         window.location.href = 'metrorunner.html';
+      });
+    }
+
+    if (skydiveBtn) {
+      skydiveBtn.addEventListener('click', () => {
+        window.location.href = 'skydive.html';
       });
     }
 
