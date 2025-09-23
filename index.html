@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>一筆書き迷路</title>
+  <style>
+    :root {
+      color-scheme: dark light;
+      --bg: #10131a;
+      --panel: rgba(20, 27, 39, 0.85);
+      --accent: #6cf;
+      --green: #38c172;
+      --purple: #9966ff;
+      --ice: #4ec7ff;
+      --warp: #ff7de9;
+      --crumble: #d4b483;
+      --door-gold: #f5c542;
+      --door-blue: #3f8cff;
+      --door-red: #ff5f6d;
+      --text: #f5f7fa;
+      font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, rgba(80,120,200,0.18), transparent 55%), var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: rgba(8, 12, 20, 0.75);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    header .controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    header .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.25rem 0.75rem;
+      min-width: 260px;
+      flex: 1;
+    }
+    header .stat {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.35rem;
+      min-width: 120px;
+    }
+    header .stat strong { font-size: 0.95rem; font-weight: 600; }
+    button, select, input {
+      font: inherit;
+      border-radius: 0.45rem;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: inherit;
+      padding: 0.4rem 0.75rem;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.2s ease;
+    }
+    button:hover, select:hover { background: rgba(255,255,255,0.18); }
+    button:active { transform: scale(0.97); }
+    select { padding-right: 1.8rem; }
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      position: relative;
+    }
+    .canvas-shell {
+      position: relative;
+      width: min(90vw, 720px);
+      aspect-ratio: 1 / 1;
+      background: rgba(12,18,28,0.75);
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    #mazeCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(10, 14, 24, 0.92);
+      color: var(--text);
+      padding: 1.5rem;
+      gap: 1rem;
+      text-align: center;
+      overflow-y: auto;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h1, .overlay h2 { margin: 0; }
+    .home-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .seed-entry {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .seed-entry input { min-width: 160px; }
+    .stage-columns {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      width: 100%;
+    }
+    .stage-column {
+      background: rgba(255,255,255,0.05);
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+      width: min(240px, 100%);
+    }
+    .stage-column h2 {
+      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+    }
+    .stage-buttons {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.4rem;
+    }
+    .stage-buttons button { padding: 0.5rem 0.25rem; border-radius: 0.5rem; }
+    .stage-buttons button.locked {
+      opacity: 0.35;
+      cursor: not-allowed;
+      position: relative;
+    }
+    .stage-buttons button.locked::after {
+      content: '\1f512';
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 1.1rem;
+    }
+    .badge {
+      font-size: 0.8rem;
+      padding: 0.1rem 0.4rem;
+      background: rgba(255,255,255,0.1);
+      border-radius: 999px;
+      margin-left: 0.35rem;
+    }
+    footer {
+      padding: 0.75rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.6);
+      padding: 1rem;
+      z-index: 50;
+    }
+    .modal.hidden { display: none; }
+    .modal-content {
+      background: rgba(10,14,24,0.95);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      max-width: 420px;
+      width: 100%;
+      text-align: left;
+      line-height: 1.6;
+    }
+    .modal-content h2 { margin-top: 0; }
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.65);
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 60;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, -0.25rem);
+    }
+    .clear-panel {
+      background: rgba(255,255,255,0.05);
+      padding: 1rem 1.5rem;
+      border-radius: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: min(360px, 100%);
+    }
+    .clear-panel h2 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: var(--accent);
+    }
+    .clear-panel .scoreline {
+      display: flex;
+      justify-content: space-between;
+    }
+    @media (max-width: 720px) {
+      header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      header .controls {
+        width: 100%;
+        justify-content: center;
+      }
+      header .stats { width: 100%; }
+      .canvas-shell { width: min(100%, 520px); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="controls">
+      <button id="newGameBtn" aria-label="新しい迷路を生成">新しい迷路</button>
+      <label class="badge" for="difficultySelect">難易度</label>
+      <select id="difficultySelect" aria-label="難易度選択">
+        <option value="easy">やさしい</option>
+        <option value="normal">ふつう</option>
+        <option value="hard">むずかしい</option>
+      </select>
+      <button id="levelSelectBtn" aria-label="レベルセレクトを開く">レベルセレクト</button>
+      <button id="howToBtn" aria-label="遊び方を表示">遊び方</button>
+      <button id="muteBtn" aria-label="ミュート切替" aria-pressed="false">🔊</button>
+    </div>
+    <div class="stats" role="status" aria-live="polite">
+      <div class="stat"><span>タイム</span><strong id="timeLabel">0.00s</strong></div>
+      <div class="stat"><span>手数</span><strong id="stepsLabel">0</strong></div>
+      <div class="stat"><span>残り時間</span><strong id="timeRemainLabel">--</strong></div>
+      <div class="stat"><span>残り手数</span><strong id="stepsRemainLabel">--</strong></div>
+      <div class="stat"><span>スコア</span><strong id="scoreLabel">0</strong></div>
+      <div class="stat"><span>連勝倍率</span><strong id="comboLabel">1.0x</strong></div>
+      <div class="stat"><span>ベストタイム</span><strong id="bestTimeLabel">--</strong></div>
+      <div class="stat"><span>ベストスコア</span><strong id="bestScoreLabel">--</strong></div>
+    </div>
+  </header>
+  <main>
+    <div class="canvas-shell" id="canvasShell">
+      <canvas id="mazeCanvas" aria-label="一筆書き迷路"></canvas>
+      <div class="overlay" id="homeOverlay" role="dialog" aria-modal="true">
+        <h1>一筆書き迷路</h1>
+        <p>スタートからゴールまで、一筆書きで駆け抜けよう！</p>
+        <div class="home-actions">
+          <button id="continueBtn">続きから</button>
+          <button id="randomBtn">ランダム</button>
+          <button id="seedCopyBtn">現在のシードをコピー</button>
+        </div>
+        <div class="seed-entry" aria-label="シード指定">
+          <input id="seedInput" type="text" placeholder="seed" />
+          <select id="seedDifficulty">
+            <option value="easy">やさしい</option>
+            <option value="normal">ふつう</option>
+            <option value="hard">むずかしい</option>
+          </select>
+          <input id="seedStage" type="number" min="1" max="10" value="1" aria-label="ステージ番号" />
+          <button id="seedStartBtn">シード開始</button>
+        </div>
+        <div class="stage-columns" id="stageColumns"></div>
+      </div>
+      <div class="overlay hidden" id="clearOverlay" role="dialog" aria-modal="true">
+        <div class="clear-panel">
+          <h2>クリア！</h2>
+          <div class="scoreline"><span>タイム</span><strong id="clearTime">0.00s</strong></div>
+          <div class="scoreline"><span>手数</span><strong id="clearSteps">0</strong></div>
+          <div class="scoreline"><span>スコア</span><strong id="clearScore">0</strong></div>
+          <div class="scoreline"><span>ベスト更新</span><strong id="clearBest">-</strong></div>
+          <div class="home-actions">
+            <button id="nextStageBtn">次のステージ</button>
+            <button id="retryBtn">もう一度</button>
+            <button id="shareBtn">Share</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer id="statusLine">ドラッグ（長押し）でスタートからゴールへ。一度通った道は戻れません。Escでリセット。</footer>
+  <div class="modal hidden" id="howToModal" role="dialog" aria-modal="true" aria-labelledby="howToTitle">
+    <div class="modal-content">
+      <h2 id="howToTitle">遊び方</h2>
+      <p>スタート地点を押し、指やマウスを離さずにゴールまで進みます。同じマスや道を二度通ることはできません。氷は滑り、一方通行は矢印の向きにしか進めません。鍵を取ると対応する扉が開き、ワープはペアのマスへ瞬間移動します。崩れる床は一度だけ渡れます。</p>
+      <p>時間と手数の制限に気をつけて、コンボ倍率を育てながら高スコアを目指しましょう！</p>
+      <button id="howToCloseBtn">閉じる</button>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+  (() => {
+    const $ = (sel) => document.querySelector(sel);
+    const canvas = $('#mazeCanvas');
+    const ctx = canvas.getContext('2d');
+    const shell = $('#canvasShell');
+    const homeOverlay = $('#homeOverlay');
+    const clearOverlay = $('#clearOverlay');
+    const howToModal = $('#howToModal');
+    const toastEl = $('#toast');
+
+    const difficultySelect = $('#difficultySelect');
+    const stageColumns = $('#stageColumns');
+    const continueBtn = $('#continueBtn');
+    const randomBtn = $('#randomBtn');
+    const seedCopyBtn = $('#seedCopyBtn');
+    const seedInput = $('#seedInput');
+    const seedDifficulty = $('#seedDifficulty');
+    const seedStage = $('#seedStage');
+    const seedStartBtn = $('#seedStartBtn');
+    const newGameBtn = $('#newGameBtn');
+    const levelSelectBtn = $('#levelSelectBtn');
+    const howToBtn = $('#howToBtn');
+    const howToCloseBtn = $('#howToCloseBtn');
+    const muteBtn = $('#muteBtn');
+
+    const timeLabel = $('#timeLabel');
+    const stepsLabel = $('#stepsLabel');
+    const timeRemainLabel = $('#timeRemainLabel');
+    const stepsRemainLabel = $('#stepsRemainLabel');
+    const scoreLabel = $('#scoreLabel');
+    const comboLabel = $('#comboLabel');
+    const bestTimeLabel = $('#bestTimeLabel');
+    const bestScoreLabel = $('#bestScoreLabel');
+    const statusLine = $('#statusLine');
+
+    const clearTime = $('#clearTime');
+    const clearSteps = $('#clearSteps');
+    const clearScore = $('#clearScore');
+    const clearBest = $('#clearBest');
+    const nextStageBtn = $('#nextStageBtn');
+    const retryBtn = $('#retryBtn');
+    const shareBtn = $('#shareBtn');
+
+    const difficulties = {
+      easy: { label: 'やさしい', size: 9, timeLimit: 60, stepLimit: 120, bonus: 200 },
+      normal: { label: 'ふつう', size: 15, timeLimit: 90, stepLimit: 220, bonus: 500 },
+      hard: { label: 'むずかしい', size: 21, timeLimit: 120, stepLimit: 350, bonus: 900 }
+    };
+
+    const colors = {
+      start: '#38c172',
+      goal: '#9966ff',
+      ice: 'rgba(90, 200, 255, 0.35)',
+      iceLine: '#4ec7ff',
+      warp: '#ff7de9',
+      oneway: '#ffbf66',
+      crumble: '#d4b483',
+      door: {
+        gold: '#f5c542',
+        blue: '#5ab0ff',
+        red: '#ff5f6d'
+      },
+      key: {
+        gold: '#ffd34d',
+        blue: '#7cd3ff',
+        red: '#ff7f88'
+      }
+    };
+
+    const combos = { min: 1.0, step: 0.1, max: 1.5 };
+    const stageCount = 10;
+
+    const params = new URLSearchParams(location.search);
+    const debugMode = params.get('debug') === '1';
+
+    let animationHandle = 0;
+    let pixelRatio = window.devicePixelRatio || 1;
+    let tileSize = 0;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const state = {
+      grid: null,
+      startCell: null,
+      goalCell: null,
+      current: null,
+      pathCells: [],
+      visitedCells: new Set(),
+      visitedEdges: new Set(),
+      difficulty: 'easy',
+      stage: 1,
+      stageSeed: '',
+      customStage: false,
+      timerStart: 0,
+      elapsed: 0,
+      steps: 0,
+      score: 0,
+      combo: loadCombo(),
+      keyState: {},
+      doorLookup: {},
+      autoSliding: false,
+      slideDir: null,
+      pointerDown: false,
+      runStarted: false,
+      completed: false,
+      failed: false,
+      lastTick: performance.now(),
+      warpCooldown: 0,
+      stageInfo: null,
+      bestTime: null,
+      bestScore: null,
+      stepLimit: 0,
+      timeLimit: 0,
+      difficultyBonus: 0
+    };
+
+    const particles = [];
+    const audio = createAudio();
+    muteBtn.textContent = audio.muted ? '🔇' : '🔊';
+    muteBtn.setAttribute('aria-pressed', audio.muted ? 'true' : 'false');
+
+    function loadCombo() {
+      const v = parseFloat(localStorage.getItem('osm_combo'));
+      if (!Number.isFinite(v)) return 1.0;
+      return Math.min(Math.max(v, combos.min), combos.max);
+    }
+
+    function saveCombo(v) {
+      localStorage.setItem('osm_combo', String(v.toFixed(2)));
+    }
+
+    function showToast(text, duration = 1800) {
+      toastEl.textContent = text;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), duration);
+    }
+
+    function hashString(str) {
+      let h = 1779033703 ^ str.length;
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+      }
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return (h ^= h >>> 16) >>> 0;
+    }
+
+    function mulberry32(a) {
+      return function () {
+        let t = (a += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function rngFromSeed(seed) {
+      const hashed = hashString(seed);
+      const rand = mulberry32(hashed || 1);
+      return {
+        next: () => rand(),
+        int: (max) => Math.floor(rand() * max),
+        pick: (arr) => arr[Math.floor(rand() * arr.length)]
+      };
+    }
+
+    function stageSeedKey(diff, index) {
+      return hashString(`${diff}:${index}`);
+    }
+
+    function stageSeedString(diff, index) {
+      return stageSeedKey(diff, index).toString(16).padStart(8, '0');
+    }
+
+    function buildStageList() {
+      stageColumns.innerHTML = '';
+      Object.entries(difficulties).forEach(([key, info]) => {
+        const column = document.createElement('div');
+        column.className = 'stage-column';
+        const title = document.createElement('h2');
+        title.textContent = info.label;
+        column.appendChild(title);
+        const buttonsWrap = document.createElement('div');
+        buttonsWrap.className = 'stage-buttons';
+        const unlock = getUnlocked(key);
+        for (let i = 1; i <= stageCount; i++) {
+          const btn = document.createElement('button');
+          btn.textContent = i;
+          btn.dataset.difficulty = key;
+          btn.dataset.stage = String(i);
+          if (i > unlock) {
+            btn.disabled = true;
+            btn.classList.add('locked');
+          } else {
+            btn.addEventListener('click', () => {
+              homeOverlay.classList.add('hidden');
+              startStage({ difficulty: key, stage: i, seed: stageSeedString(key, i), custom: false });
+            });
+          }
+          buttonsWrap.appendChild(btn);
+        }
+        column.appendChild(buttonsWrap);
+        stageColumns.appendChild(column);
+      });
+    }
+
+    function getUnlocked(diff) {
+      const key = `osm_unlock_${diff}`;
+      const value = parseInt(localStorage.getItem(key), 10);
+      if (!Number.isFinite(value)) {
+        localStorage.setItem(key, '1');
+        return 1;
+      }
+      return Math.min(Math.max(value, 1), stageCount);
+    }
+
+    function setUnlocked(diff, value) {
+      localStorage.setItem(`osm_unlock_${diff}`, String(Math.min(value, stageCount)));
+    }
+
+    function createGrid(size) {
+      return Array.from({ length: size }, (_, r) =>
+        Array.from({ length: size }, (_, c) => ({
+          r,
+          c,
+          walls: { N: true, E: true, S: true, W: true },
+          type: 'normal',
+          meta: {},
+          special: null
+        }))
+      );
+    }
+
+    function carveMaze(grid, rng) {
+      const stack = [];
+      const visited = new Set();
+      const start = grid[0][0];
+      stack.push(start);
+      visited.add('0,0');
+      const dirs = [
+        { dr: -1, dc: 0, wall: 'N', opp: 'S' },
+        { dr: 0, dc: 1, wall: 'E', opp: 'W' },
+        { dr: 1, dc: 0, wall: 'S', opp: 'N' },
+        { dr: 0, dc: -1, wall: 'W', opp: 'E' }
+      ];
+
+      while (stack.length) {
+        const current = stack[stack.length - 1];
+        const neighbors = dirs
+          .map((dir) => ({ dir, cell: cellAt(grid, current.r + dir.dr, current.c + dir.dc) }))
+          .filter(({ cell }) => cell && !visited.has(`${cell.r},${cell.c}`));
+        if (neighbors.length === 0) {
+          stack.pop();
+        } else {
+          const { dir, cell } = neighbors[rng.int(neighbors.length)];
+          current.walls[dir.wall] = false;
+          cell.walls[dir.opp] = false;
+          visited.add(`${cell.r},${cell.c}`);
+          stack.push(cell);
+        }
+      }
+    }
+
+    function cellAt(grid, r, c) {
+      if (!grid) return null;
+      if (r < 0 || c < 0 || r >= grid.length || c >= grid.length) return null;
+      return grid[r][c];
+    }
+
+    function findPath(grid, startCell, goalCell) {
+      const visited = new Set();
+      const path = [];
+      const dirs = [
+        { dr: -1, dc: 0, wall: 'N' },
+        { dr: 0, dc: 1, wall: 'E' },
+        { dr: 1, dc: 0, wall: 'S' },
+        { dr: 0, dc: -1, wall: 'W' }
+      ];
+
+      function dfs(cell) {
+        path.push(cell);
+        if (cell === goalCell) return true;
+        visited.add(`${cell.r},${cell.c}`);
+        for (const dir of dirs) {
+          if (cell.walls[dir.wall]) continue;
+          const next = cellAt(grid, cell.r + dir.dr, cell.c + dir.dc);
+          if (!next || visited.has(`${next.r},${next.c}`)) continue;
+          if (dfs(next)) return true;
+        }
+        path.pop();
+        return false;
+      }
+      dfs(startCell);
+      return path.slice();
+    }
+
+    function directionBetween(a, b) {
+      const dr = b.r - a.r;
+      const dc = b.c - a.c;
+      if (dr === -1 && dc === 0) return 'N';
+      if (dr === 1 && dc === 0) return 'S';
+      if (dr === 0 && dc === -1) return 'W';
+      if (dr === 0 && dc === 1) return 'E';
+      return null;
+    }
+
+    function applyGimmicks(grid, path, rng, difficultyKey) {
+      const startCell = path[0];
+      const goalCell = path[path.length - 1];
+      startCell.special = 'start';
+      goalCell.special = 'goal';
+
+      const avoid = new Set(path.map((cell) => `${cell.r},${cell.c}`));
+
+      const colorsOrder = ['gold', 'blue', 'red'];
+      const color = colorsOrder[rng.int(colorsOrder.length)];
+      const doorIdx = Math.max(2, Math.min(path.length - 2, Math.floor(path.length * 0.65)));
+      const keyIdx = Math.max(1, Math.floor(doorIdx * 0.5));
+      const doorCell = path[doorIdx];
+      const keyCell = path[keyIdx];
+      if (doorCell && keyCell) {
+        doorCell.type = 'door';
+        doorCell.meta = { color, locked: true };
+        keyCell.type = 'key';
+        keyCell.meta = { color };
+      }
+
+      const onewayCount = difficultyKey === 'hard' ? 4 : difficultyKey === 'normal' ? 3 : 2;
+      const usedIndices = new Set([0, path.length - 1, keyIdx, doorIdx]);
+      for (let i = 0; i < onewayCount; i++) {
+        let idx = Math.floor(path.length * (0.2 + 0.6 * rng.next()));
+        let safety = 0;
+        while ((usedIndices.has(idx) || idx <= 1 || idx >= path.length - 2) && safety++ < 40) {
+          idx = Math.floor(path.length * rng.next());
+        }
+        if (usedIndices.has(idx) || idx <= 1 || idx >= path.length - 1) continue;
+        usedIndices.add(idx);
+        const cell = path[idx];
+        if (!cell || cell.type !== 'normal') continue;
+        const dir = directionBetween(path[idx - 1], cell);
+        const dirOut = directionBetween(cell, path[idx + 1]) || dir;
+        cell.type = 'oneway';
+        cell.meta = { dirIn: dir, dirOut };
+      }
+
+      const straightSegments = [];
+      for (let i = 1; i < path.length - 1; i++) {
+        const dir1 = directionBetween(path[i - 1], path[i]);
+        const dir2 = directionBetween(path[i], path[i + 1]);
+        if (dir1 && dir1 === dir2) {
+          straightSegments.push({ index: i, dir: dir1 });
+        }
+      }
+      const iceCount = difficultyKey === 'hard' ? 4 : difficultyKey === 'normal' ? 3 : 2;
+      const iceUsed = new Set([keyIdx, doorIdx]);
+      for (let i = 0; i < iceCount && straightSegments.length; i++) {
+        const pick = straightSegments.splice(rng.int(straightSegments.length), 1)[0];
+        if (!pick) continue;
+        let idx = pick.index;
+        if (iceUsed.has(idx)) continue;
+        const dir = pick.dir;
+        let len = 1 + rng.int(2);
+        let j = 0;
+        while (j < len && idx + j < path.length - 1) {
+          const target = path[idx + j];
+          if (!target || target.type !== 'normal') break;
+          target.type = 'ice';
+          target.meta = { dir };
+          iceUsed.add(idx + j);
+          j++;
+        }
+      }
+
+      const warpPairs = Math.min(1 + (difficultyKey === 'hard' ? 1 : 0), Math.floor(path.length / 6));
+      const warpList = [];
+      for (let p = 0; p < warpPairs; p++) {
+        const idxA = Math.max(2, Math.floor(path.length * (0.15 + rng.next() * 0.3)));
+        const idxB = Math.max(idxA + 3, Math.floor(path.length * (0.55 + rng.next() * 0.35)));
+        const cellA = path[idxA];
+        const cellB = path[Math.min(path.length - 2, idxB)];
+        if (!cellA || !cellB || cellA === cellB) continue;
+        if (cellA.type !== 'normal' || cellB.type !== 'normal') continue;
+        const warpId = `warp-${p}-${rng.int(9999)}`;
+        cellA.type = 'warp';
+        cellA.meta = { id: warpId };
+        cellB.type = 'warp';
+        cellB.meta = { id: warpId };
+        warpList.push({ id: warpId, a: cellA, b: cellB });
+      }
+      warpList.forEach(({ a, b }) => {
+        a.meta.pair = b;
+        b.meta.pair = a;
+      });
+
+      const branchCells = [];
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid.length; c++) {
+          const cell = grid[r][c];
+          const key = `${r},${c}`;
+          if (avoid.has(key)) continue;
+          const degree = neighborCells(grid, cell).length;
+          if (degree <= 1) branchCells.push(cell);
+        }
+      }
+      const crumbleCount = Math.min(branchCells.length, difficultyKey === 'hard' ? 8 : difficultyKey === 'normal' ? 6 : 4);
+      for (let i = 0; i < crumbleCount; i++) {
+        const cell = branchCells.splice(rng.int(branchCells.length), 1)[0];
+        if (!cell) break;
+        cell.type = 'crumble';
+        cell.meta = { collapsed: false };
+      }
+
+      return { startCell, goalCell, doorCell, keyCell };
+    }
+
+    function neighborCells(grid, cell) {
+      const dirs = [
+        { dr: -1, dc: 0, wall: 'N' },
+        { dr: 0, dc: 1, wall: 'E' },
+        { dr: 1, dc: 0, wall: 'S' },
+        { dr: 0, dc: -1, wall: 'W' }
+      ];
+      const result = [];
+      for (const dir of dirs) {
+        if (cell.walls[dir.wall]) continue;
+        const next = cellAt(grid, cell.r + dir.dr, cell.c + dir.dc);
+        if (next) result.push({ cell: next, dir: dir.wall });
+      }
+      return result;
+    }
+
+    function posToCell(x, y) {
+      const rect = canvas.getBoundingClientRect();
+      const px = x - rect.left;
+      const py = y - rect.top;
+      const col = Math.floor((px - offsetX) / tileSize);
+      const row = Math.floor((py - offsetY) / tileSize);
+      if (Number.isNaN(row) || Number.isNaN(col)) return null;
+      if (!state.grid || row < 0 || col < 0 || row >= state.grid.length || col >= state.grid.length) return null;
+      return state.grid[row][col];
+    }
+
+    function centerOf(cell) {
+      return [offsetX + (cell.c + 0.5) * tileSize, offsetY + (cell.r + 0.5) * tileSize];
+    }
+
+    function keyFor(cell) {
+      return `${cell.r},${cell.c}`;
+    }
+
+    function edgeKey(a, b) {
+      return a.r < b.r || (a.r === b.r && a.c < b.c) ? `${keyFor(a)}|${keyFor(b)}` : `${keyFor(b)}|${keyFor(a)}`;
+    }
+
+    function resetState() {
+      state.pathCells = [];
+      state.visitedCells.clear();
+      state.visitedEdges.clear();
+      state.steps = 0;
+      state.elapsed = 0;
+      state.timerStart = 0;
+      state.runStarted = false;
+      state.autoSliding = false;
+      state.slideDir = null;
+      state.pointerDown = false;
+      state.completed = false;
+      state.failed = false;
+      state.warpCooldown = 0;
+      state.keyState = {};
+      state.score = 0;
+      if (state.grid) {
+        for (let r = 0; r < state.grid.length; r++) {
+          for (let c = 0; c < state.grid.length; c++) {
+            const cell = state.grid[r][c];
+            if (cell.type === 'crumble' && cell.meta) {
+              cell.meta.collapsed = false;
+            }
+          }
+        }
+      }
+      Object.values(state.doorLookup || {}).forEach((door) => {
+        if (door && door.meta) {
+          door.type = 'door';
+          door.meta.locked = true;
+          door.meta.opened = false;
+        }
+      });
+      particles.length = 0;
+      if (state.startCell) {
+        state.current = state.startCell;
+        state.pathCells.push(state.startCell);
+        state.visitedCells.add(keyFor(state.startCell));
+      }
+      updateHUD();
+    }
+
+    function startStage({ difficulty, stage, seed, custom }) {
+      state.difficulty = difficulty;
+      difficultySelect.value = difficulty;
+      state.stage = typeof stage === 'number' ? stage : 1;
+      state.stageSeed = seed || stageSeedString(difficulty, state.stage);
+      state.customStage = Boolean(custom);
+      const info = difficulties[difficulty];
+      state.timeLimit = info.timeLimit;
+      state.stepLimit = info.stepLimit;
+      state.difficultyBonus = info.bonus;
+      state.stageInfo = info;
+
+      const rng = rngFromSeed(state.stageSeed);
+      const size = info.size;
+      const grid = createGrid(size);
+      carveMaze(grid, rng);
+      const path = findPath(grid, grid[0][0], grid[size - 1][size - 1]);
+      const { startCell, goalCell, doorCell } = applyGimmicks(grid, path, rng, difficulty);
+      state.grid = grid;
+      state.startCell = startCell;
+      state.goalCell = goalCell;
+      state.doorLookup = {};
+      if (doorCell && doorCell.meta) {
+        state.doorLookup[doorCell.meta.color] = doorCell;
+      }
+      state.bestTime = loadBest('time');
+      state.bestScore = loadBest('score');
+      resetState();
+      resize();
+      updateURL();
+      const stageText = state.customStage ? 'カスタム' : `ステージ ${state.stage}`;
+      statusLine.textContent = `${info.label} ${stageText} | シード ${state.stageSeed}`;
+      localStorage.setItem('osm_continue', JSON.stringify({ difficulty, stage: state.stage, seed: state.stageSeed, custom: !!custom }));
+      hideOverlays();
+      playSound('start');
+    }
+
+    function updateURL() {
+      const params = new URLSearchParams(location.search);
+      params.set('difficulty', state.difficulty);
+      params.set('seed', state.stageSeed);
+      params.set('stage', String(state.stage));
+      if (debugMode) params.set('debug', '1');
+      history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+    }
+
+    function hideOverlays() {
+      homeOverlay.classList.add('hidden');
+      clearOverlay.classList.add('hidden');
+      howToModal.classList.add('hidden');
+    }
+
+    function loadBest(kind) {
+      const key = state.customStage ? `osm_best_${kind}_${state.stageSeed}` : `osm_best_${kind}_${state.difficulty}_${state.stage}`;
+      const value = parseFloat(localStorage.getItem(key));
+      if (!Number.isFinite(value)) return null;
+      return value;
+    }
+
+    function saveBest(kind, value) {
+      const key = state.customStage ? `osm_best_${kind}_${state.stageSeed}` : `osm_best_${kind}_${state.difficulty}_${state.stage}`;
+      localStorage.setItem(key, String(value));
+    }
+
+    function formatTime(value) {
+      if (!Number.isFinite(value)) return '--';
+      return value.toFixed(2) + 's';
+    }
+
+    function updateHUD() {
+      timeLabel.textContent = formatTime(state.elapsed);
+      stepsLabel.textContent = state.steps.toString();
+      const remainTime = Math.max(0, state.timeLimit - state.elapsed);
+      timeRemainLabel.textContent = formatTime(remainTime);
+      stepsRemainLabel.textContent = Math.max(0, state.stepLimit - state.steps).toString();
+      scoreLabel.textContent = Math.round(state.score).toString();
+      comboLabel.textContent = `${state.combo.toFixed(1)}x`;
+      bestTimeLabel.textContent = state.bestTime ? formatTime(state.bestTime) : '--';
+      bestScoreLabel.textContent = state.bestScore ? Math.round(state.bestScore).toString() : '--';
+    }
+
+    function pointerDown(event) {
+      event.preventDefault();
+      if (!state.grid || state.completed || state.failed) return;
+      state.pointerDown = true;
+      canvas.setPointerCapture(event.pointerId);
+      const cell = posToCell(event.clientX, event.clientY);
+      if (!cell) return;
+      if (cell !== state.startCell && !state.runStarted) {
+        state.pointerDown = false;
+        return;
+      }
+      if (!state.runStarted) {
+        state.runStarted = true;
+        state.timerStart = performance.now();
+        state.elapsed = 0;
+        state.pathCells = [state.startCell];
+        state.visitedCells = new Set([keyFor(state.startCell)]);
+        state.visitedEdges = new Set();
+        state.current = state.startCell;
+        state.autoSliding = false;
+        state.score = 0;
+      }
+      handlePointerMove(event);
+    }
+
+    function pointerMove(event) {
+      if (!state.pointerDown || state.completed || state.failed) return;
+      handlePointerMove(event);
+    }
+
+    function handlePointerMove(event) {
+      if (!state.runStarted || state.autoSliding) return;
+      const cell = posToCell(event.clientX, event.clientY);
+      if (!cell || cell === state.current) return;
+      attemptMove(cell, { auto: false, dir: directionBetween(state.current, cell) });
+    }
+
+    function pointerUp(event) {
+      if (!state.pointerDown) return;
+      state.pointerDown = false;
+      if (canvas.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId);
+      }
+      if (!state.completed) {
+        fail('指を離しました');
+      }
+    }
+
+    function keyHandler(event) {
+      if (event.repeat) return;
+      if (event.key === 'Escape') {
+        if (state.grid) fail('リセット');
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        if (!state.runStarted && !homeOverlay.classList.contains('hidden')) {
+          const data = getContinueData();
+          if (data) startStage(data);
+          else startStage({ difficulty: difficultySelect.value, stage: 1, seed: stageSeedString(difficultySelect.value, 1), custom: false });
+        }
+      }
+    }
+
+    function attemptMove(target, context = { auto: false, dir: null }) {
+      const current = state.current;
+      if (!current || target === current) return;
+      const dr = target.r - current.r;
+      const dc = target.c - current.c;
+      if (Math.abs(dr) + Math.abs(dc) !== 1) return;
+      const dir = dr === -1 ? 'N' : dr === 1 ? 'S' : dc === -1 ? 'W' : 'E';
+      if (current.walls[dir]) {
+        if (context.auto) {
+          state.autoSliding = false;
+          return;
+        }
+        fail('壁にぶつかりました');
+        return;
+      }
+      if (!canEnter(current, target, dir)) {
+        if (context.auto) {
+          state.autoSliding = false;
+          return;
+        }
+        fail('通れません');
+        return;
+      }
+      const key = keyFor(target);
+      if (state.visitedCells.has(key)) {
+        fail('同じマスは通れません');
+        return;
+      }
+      const eKey = edgeKey(current, target);
+      if (state.visitedEdges.has(eKey)) {
+        fail('同じ道は通れません');
+        return;
+      }
+      applyMove(current, target, dir, context);
+    }
+
+    function canEnter(from, to, dir) {
+      if (to.type === 'door' && to.meta.locked) return false;
+      if (to.type === 'crumble' && to.meta.collapsed) return false;
+      if (to.type === 'oneway') {
+        const allowed = to.meta.dirIn;
+        if (allowed && allowed !== dir) return false;
+      }
+      return true;
+    }
+
+    function applyMove(from, to, dir, context) {
+      state.current = to;
+      state.visitedCells.add(keyFor(to));
+      state.visitedEdges.add(edgeKey(from, to));
+      state.pathCells.push(to);
+      state.steps += 1;
+      playSound('move');
+      checkLimits();
+      handleTile(from, to, dir, context);
+      updateHUD();
+    }
+
+    function handleTile(from, to, dir, context) {
+      if (from.type === 'crumble' && !from.meta.collapsed) {
+        from.meta.collapsed = true;
+      }
+      if (to === state.goalCell) {
+        complete();
+        return;
+      }
+      switch (to.type) {
+        case 'key':
+          collectKey(to.meta.color);
+          break;
+        case 'warp':
+          triggerWarp(to, dir);
+          break;
+        case 'ice':
+          state.autoSliding = true;
+          state.slideDir = dir;
+          break;
+        default:
+          state.autoSliding = false;
+          state.slideDir = null;
+          break;
+      }
+    }
+
+    function collectKey(color) {
+      if (state.keyState[color]) return;
+      playSound('key');
+      state.keyState[color] = true;
+      const doorCell = state.doorLookup[color];
+      if (doorCell) {
+        doorCell.type = 'normal';
+        doorCell.meta.locked = false;
+        doorCell.meta.opened = true;
+      }
+      showToast(`${colorName(color)}の鍵を入手！`);
+    }
+
+    function triggerWarp(cell, dir) {
+      if (!cell.meta.pair || state.warpCooldown > 0) return;
+      playSound('warp');
+      const target = cell.meta.pair;
+      if (state.visitedCells.has(keyFor(target))) {
+        fail('ワープ先は通れません');
+        return;
+      }
+      state.warpCooldown = 2;
+      state.current = target;
+      state.visitedCells.add(keyFor(target));
+      state.pathCells.push(target);
+      if (target === state.goalCell) {
+        complete();
+        return;
+      }
+      if (target.type === 'key') {
+        collectKey(target.meta.color);
+      }
+      if (target.type === 'ice') {
+        state.autoSliding = true;
+        state.slideDir = dir || directionBetween(cell, target) || 'N';
+      } else {
+        state.autoSliding = false;
+        state.slideDir = null;
+      }
+    }
+
+    function colorName(color) {
+      switch (color) {
+        case 'gold':
+          return '金';
+        case 'blue':
+          return '青';
+        case 'red':
+          return '赤';
+        default:
+          return color;
+      }
+    }
+
+    function checkLimits() {
+      if (state.steps > state.stepLimit) {
+        fail('手数制限を超えました');
+      }
+    }
+
+    function fail(reason) {
+      if (state.failed) return;
+      state.failed = true;
+      state.autoSliding = false;
+      state.pointerDown = false;
+      state.combo = combos.min;
+      saveCombo(state.combo);
+      showToast(reason || '失敗');
+      playSound('fail');
+      setTimeout(() => {
+        resetState();
+        state.failed = false;
+      }, 600);
+    }
+
+    function complete() {
+      if (state.completed) return;
+      state.completed = true;
+      state.pointerDown = false;
+      state.autoSliding = false;
+      const now = performance.now();
+      state.elapsed = ((now - state.timerStart) || 0) / 1000;
+      const baseScore = Math.max(0, 10000 - state.elapsed * 100 - state.steps * 2 + state.difficultyBonus);
+      let score = baseScore * state.combo;
+      let bestBonus = false;
+      if (!state.bestScore || score > state.bestScore) {
+        score += 500;
+        bestBonus = true;
+      }
+      state.score = Math.max(0, Math.round(score));
+      if (!state.bestTime || state.elapsed < state.bestTime) {
+        saveBest('time', state.elapsed);
+        state.bestTime = state.elapsed;
+        bestBonus = true;
+      }
+      if (!state.bestScore || state.score > state.bestScore) {
+        saveBest('score', state.score);
+        state.bestScore = state.score;
+      }
+      state.combo = Math.min(state.combo + combos.step, combos.max);
+      saveCombo(state.combo);
+      updateHUD();
+      playSound('clear');
+      spawnParticles(centerOf(state.goalCell));
+      clearTime.textContent = formatTime(state.elapsed);
+      clearSteps.textContent = state.steps.toString();
+      clearScore.textContent = state.score.toString();
+      clearBest.textContent = bestBonus ? 'Yes!' : 'No';
+      clearOverlay.classList.remove('hidden');
+      unlockNext();
+    }
+
+    function unlockNext() {
+      if (state.customStage) return;
+      const unlock = getUnlocked(state.difficulty);
+      if (state.stage === unlock && state.stage < stageCount) {
+        setUnlocked(state.difficulty, state.stage + 1);
+        buildStageList();
+      }
+    }
+
+    function spawnParticles([x, y]) {
+      for (let i = 0; i < 26; i++) {
+        particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 120,
+          vy: (Math.random() - 0.5) * 120,
+          life: 600,
+          age: 0,
+          hue: 260 + Math.random() * 40
+        });
+      }
+    }
+
+    function updateParticles(dt) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.age += dt;
+        if (p.age >= p.life) {
+          particles.splice(i, 1);
+          continue;
+        }
+        const t = dt / 1000;
+        p.x += p.vx * t;
+        p.y += p.vy * t;
+        p.vy += 160 * t;
+      }
+    }
+
+    function draw() {
+      if (!state.grid) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+      const { grid } = state;
+      const size = grid.length;
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(10,13,20,0.95)';
+      ctx.fillRect(0, 0, canvas.width / pixelRatio, canvas.height / pixelRatio);
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+      ctx.fillStyle = 'rgba(255,255,255,0.02)';
+      ctx.fillRect(0, 0, tileSize * size, tileSize * size);
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          drawCellFloor(grid[r][c]);
+        }
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = Math.max(1.5, tileSize * 0.08);
+      ctx.beginPath();
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          drawCellWalls(grid[r][c]);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      drawPath();
+      drawParticles();
+
+      if (debugMode) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = `${Math.max(10, tileSize * 0.35)}px monospace`;
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            const cell = grid[r][c];
+            const [cx, cy] = centerOf(cell);
+            ctx.fillText(cell.type[0], cx - tileSize * 0.15, cy + tileSize * 0.15);
+          }
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    function drawCellFloor(cell) {
+      const [x, y] = [cell.c * tileSize, cell.r * tileSize];
+      const size = tileSize;
+      ctx.save();
+      if (cell.special === 'start') {
+        ctx.fillStyle = colors.start;
+        ctx.beginPath();
+        ctx.arc(x + size / 2, y + size / 2, size * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+      if (cell.special === 'goal') {
+        ctx.fillStyle = colors.goal;
+        drawRoundedRect(x + 4, y + 4, size - 8, size - 8, Math.max(6, size * 0.2));
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+      switch (cell.type) {
+        case 'ice':
+          ctx.fillStyle = colors.ice;
+          ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+          ctx.strokeStyle = colors.iceLine;
+          ctx.lineWidth = Math.max(1, size * 0.05);
+          ctx.beginPath();
+          ctx.moveTo(x + size * 0.25, y + size * 0.25);
+          ctx.lineTo(x + size * 0.75, y + size * 0.75);
+          ctx.moveTo(x + size * 0.25, y + size * 0.75);
+          ctx.lineTo(x + size * 0.75, y + size * 0.25);
+          ctx.stroke();
+          break;
+        case 'warp':
+          ctx.fillStyle = 'rgba(255, 125, 233, 0.25)';
+          ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+          ctx.strokeStyle = colors.warp;
+          ctx.lineWidth = Math.max(1.5, size * 0.08);
+          ctx.beginPath();
+          ctx.arc(x + size / 2, y + size / 2, size * 0.25, 0, Math.PI * 2);
+          ctx.stroke();
+          break;
+        case 'oneway':
+          ctx.fillStyle = 'rgba(255, 191, 102, 0.35)';
+          ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+          drawArrow(cell.meta.dirIn, x, y, size);
+          break;
+        case 'key':
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
+          ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+          drawKey(cell.meta.color, x, y, size);
+          break;
+        case 'door':
+          ctx.fillStyle = colors.door[cell.meta.color] || colors.door.gold;
+          ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+          ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+          ctx.lineWidth = Math.max(1, size * 0.05);
+          ctx.beginPath();
+          ctx.moveTo(x + size * 0.3, y + size * 0.2);
+          ctx.lineTo(x + size * 0.7, y + size * 0.2);
+          ctx.lineTo(x + size * 0.7, y + size * 0.8);
+          ctx.lineTo(x + size * 0.3, y + size * 0.8);
+          ctx.closePath();
+          ctx.stroke();
+          break;
+        case 'crumble':
+          ctx.fillStyle = cell.meta.collapsed ? 'rgba(80,60,30,0.4)' : 'rgba(212, 180, 131, 0.28)';
+          ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+          ctx.strokeStyle = 'rgba(80,60,30,0.6)';
+          ctx.lineWidth = Math.max(1, size * 0.05);
+          ctx.beginPath();
+          ctx.moveTo(x + size * 0.2, y + size * 0.3);
+          ctx.lineTo(x + size * 0.45, y + size * 0.55);
+          ctx.lineTo(x + size * 0.3, y + size * 0.8);
+          ctx.stroke();
+          break;
+        default:
+          ctx.fillStyle = 'rgba(255,255,255,0.03)';
+          ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+          break;
+      }
+      ctx.restore();
+    }
+
+    function drawArrow(dir, x, y, size) {
+      ctx.save();
+      ctx.translate(x + size / 2, y + size / 2);
+      const angle = dir === 'N' ? -Math.PI / 2 : dir === 'S' ? Math.PI / 2 : dir === 'E' ? 0 : Math.PI;
+      ctx.rotate(angle);
+      ctx.fillStyle = 'rgba(255, 210, 130, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.25, size * 0.15);
+      ctx.lineTo(0, -size * 0.28);
+      ctx.lineTo(size * 0.25, size * 0.15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawKey(color, x, y, size) {
+      ctx.strokeStyle = colors.key[color] || colors.key.gold;
+      ctx.lineWidth = Math.max(1.5, size * 0.08);
+      ctx.beginPath();
+      ctx.arc(x + size * 0.4, y + size * 0.5, size * 0.18, 0, Math.PI * 2);
+      ctx.moveTo(x + size * 0.4, y + size * 0.5);
+      ctx.lineTo(x + size * 0.7, y + size * 0.5);
+      ctx.moveTo(x + size * 0.64, y + size * 0.45);
+      ctx.lineTo(x + size * 0.64, y + size * 0.58);
+      ctx.stroke();
+    }
+
+    function drawCellWalls(cell) {
+      const x = cell.c * tileSize;
+      const y = cell.r * tileSize;
+      const s = tileSize;
+      if (cell.walls.N) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + s, y);
+      }
+      if (cell.walls.S) {
+        ctx.moveTo(x, y + s);
+        ctx.lineTo(x + s, y + s);
+      }
+      if (cell.walls.W) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + s);
+      }
+      if (cell.walls.E) {
+        ctx.moveTo(x + s, y);
+        ctx.lineTo(x + s, y + s);
+      }
+    }
+
+    function drawPath() {
+      if (state.pathCells.length < 2) return;
+      ctx.save();
+      ctx.shadowColor = 'rgba(100, 200, 255, 0.7)';
+      ctx.shadowBlur = Math.max(8, tileSize * 0.4);
+      ctx.strokeStyle = 'rgba(120, 220, 255, 0.9)';
+      ctx.lineWidth = Math.max(6, tileSize * 0.2);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      const [sx, sy] = centerOf(state.pathCells[0]);
+      ctx.moveTo(sx, sy);
+      for (let i = 1; i < state.pathCells.length; i++) {
+        const [x, y] = centerOf(state.pathCells[i]);
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      ctx.save();
+      for (const p of particles) {
+        const alpha = Math.max(0, 1 - p.age / p.life);
+        ctx.fillStyle = `hsla(${p.hue.toFixed(1)}, 80%, 60%, ${alpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(2, tileSize * 0.12) * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawRoundedRect(x, y, w, h, r) {
+      const radius = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + w - radius, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+      ctx.lineTo(x + w, y + h - radius);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+      ctx.lineTo(x + radius, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function resize() {
+      const rect = shell.getBoundingClientRect();
+      pixelRatio = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(rect.width * pixelRatio);
+      canvas.height = Math.floor(rect.height * pixelRatio);
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      if (state.grid) {
+        const size = state.grid.length;
+        tileSize = Math.min(rect.width, rect.height) / size;
+        const drawSize = tileSize * size;
+        offsetX = Math.max(0, (rect.width - drawSize) / 2);
+        offsetY = Math.max(0, (rect.height - drawSize) / 2);
+      }
+    }
+
+    const observer = new ResizeObserver(() => {
+      resize();
+      draw();
+    });
+    observer.observe(shell);
+
+    function loop(now) {
+      animationHandle = requestAnimationFrame(loop);
+      const dt = now - state.lastTick;
+      state.lastTick = now;
+      if (state.runStarted && !state.completed && !state.failed) {
+        state.elapsed = (now - state.timerStart) / 1000;
+        if (state.elapsed >= state.timeLimit) {
+          fail('時間切れ');
+        }
+        if (state.autoSliding) {
+          const dir = state.slideDir;
+          const current = state.current;
+          const next = neighborByDir(current, dir);
+          if (!next || current.walls[dir] || state.visitedCells.has(keyFor(next)) || !canEnter(current, next, dir)) {
+            state.autoSliding = false;
+          } else {
+            attemptMove(next, { auto: true, dir });
+          }
+        }
+      }
+      updateParticles(dt);
+      updateHUD();
+      draw();
+    }
+
+    function neighborByDir(cell, dir) {
+      if (!cell) return null;
+      switch (dir) {
+        case 'N':
+          return cellAt(state.grid, cell.r - 1, cell.c);
+        case 'S':
+          return cellAt(state.grid, cell.r + 1, cell.c);
+        case 'W':
+          return cellAt(state.grid, cell.r, cell.c - 1);
+        case 'E':
+          return cellAt(state.grid, cell.r, cell.c + 1);
+        default:
+          return null;
+      }
+    }
+
+    function getContinueData() {
+      try {
+        const data = JSON.parse(localStorage.getItem('osm_continue'));
+        if (!data) return null;
+        if (!difficulties[data.difficulty]) return null;
+        return data;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function setupEvents() {
+      canvas.addEventListener('pointerdown', pointerDown);
+      window.addEventListener('pointermove', pointerMove);
+      window.addEventListener('pointerup', pointerUp);
+      window.addEventListener('pointercancel', pointerUp);
+      window.addEventListener('keydown', keyHandler);
+
+      newGameBtn.addEventListener('click', () => {
+        const diff = difficultySelect.value;
+        const seed = Math.random().toString(36).slice(2, 10);
+        startStage({ difficulty: diff, stage: 0, seed, custom: true });
+      });
+
+      levelSelectBtn.addEventListener('click', () => {
+        homeOverlay.classList.remove('hidden');
+      });
+
+      howToBtn.addEventListener('click', () => {
+        howToModal.classList.remove('hidden');
+      });
+
+      howToCloseBtn.addEventListener('click', () => {
+        howToModal.classList.add('hidden');
+      });
+
+      muteBtn.addEventListener('click', () => {
+        audio.toggle();
+        muteBtn.textContent = audio.muted ? '🔇' : '🔊';
+        muteBtn.setAttribute('aria-pressed', audio.muted ? 'true' : 'false');
+      });
+
+      continueBtn.addEventListener('click', () => {
+        const data = getContinueData();
+        if (data) startStage(data);
+        else showToast('続きはありません');
+      });
+
+      randomBtn.addEventListener('click', () => {
+        const diff = difficultySelect.value;
+        const seed = Math.random().toString(36).slice(2, 10);
+        startStage({ difficulty: diff, stage: 0, seed, custom: true });
+      });
+
+      seedCopyBtn.addEventListener('click', () => {
+        copyText(`${location.origin}${location.pathname}?seed=${state.stageSeed}&difficulty=${state.difficulty}&stage=${state.stage}`);
+      });
+
+      seedStartBtn.addEventListener('click', () => {
+        const seed = seedInput.value.trim() || Math.random().toString(36).slice(2, 10);
+        const diff = seedDifficulty.value;
+        const stage = Math.max(1, Math.min(stageCount, Number(seedStage.value) || 1));
+        startStage({ difficulty: diff, stage, seed, custom: true });
+      });
+
+      nextStageBtn.addEventListener('click', () => {
+        if (state.customStage) {
+          startStage({ difficulty: state.difficulty, stage: 0, seed: Math.random().toString(36).slice(2, 10), custom: true });
+        } else {
+          const nextStage = Math.min(stageCount, state.stage + 1);
+          startStage({ difficulty: state.difficulty, stage: nextStage, seed: stageSeedString(state.difficulty, nextStage), custom: false });
+        }
+      });
+
+      retryBtn.addEventListener('click', () => {
+        startStage({ difficulty: state.difficulty, stage: state.stage, seed: state.stageSeed, custom: state.customStage });
+      });
+
+      shareBtn.addEventListener('click', shareStage);
+    }
+
+    function shareStage() {
+      const stageLabel = state.customStage ? 'カスタム' : `ステージ${state.stage}`;
+      const url = `${location.origin}${location.pathname}?seed=${state.stageSeed}&difficulty=${state.difficulty}&stage=${state.stage}`;
+      const text = `一筆書き迷路 ${difficulties[state.difficulty].label} ${stageLabel} - シード:${state.stageSeed}`;
+      if (navigator.share) {
+        navigator.share({ title: '一筆書き迷路', text, url }).catch(() => copyText(url));
+      } else {
+        copyText(url);
+      }
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => showToast('URLをコピーしました')).catch(() => showToast('コピーできませんでした'));
+      } else {
+        showToast('クリップボードに対応していません');
+      }
+    }
+
+    function initFromQuery() {
+      const diffParam = params.get('difficulty');
+      const stageParam = parseInt(params.get('stage'), 10);
+      const seedParam = params.get('seed');
+      const difficulty = diffParam && difficulties[diffParam] ? diffParam : 'easy';
+      const stage = Number.isFinite(stageParam) ? stageParam : 1;
+      difficultySelect.value = difficulty;
+      if (seedParam) {
+        startStage({ difficulty, stage, seed: seedParam, custom: true });
+      } else {
+        startStage({ difficulty, stage, seed: stageSeedString(difficulty, stage), custom: false });
+      }
+    }
+
+    function createAudio() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctxAudio = AudioContext ? new AudioContext() : null;
+      let muted = localStorage.getItem('osm_muted') === '1';
+      let unlocked = false;
+      if (ctxAudio) {
+        const resume = () => {
+          if (!unlocked) {
+            ctxAudio.resume();
+            unlocked = true;
+          }
+        };
+        window.addEventListener('pointerdown', resume, { once: true });
+      }
+      function play(type) {
+        if (!ctxAudio || muted) return;
+        const now = ctxAudio.currentTime;
+        const osc = ctxAudio.createOscillator();
+        const gain = ctxAudio.createGain();
+        osc.type = type === 'clear' ? 'triangle' : type === 'fail' ? 'sawtooth' : 'sine';
+        const freq = type === 'key' ? 720 : type === 'warp' ? 440 : type === 'clear' ? 620 : type === 'fail' ? 140 : 280;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+        osc.connect(gain).connect(ctxAudio.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      }
+      return {
+        play,
+        toggle() {
+          muted = !muted;
+          localStorage.setItem('osm_muted', muted ? '1' : '0');
+        },
+        get muted() {
+          return muted;
+        }
+      };
+    }
+
+    function playSound(name) {
+      audio.play(name);
+    }
+
+    function start() {
+      buildStageList();
+      setupEvents();
+      resize();
+      initFromQuery();
+      animationHandle = requestAnimationFrame(loop);
+    }
+
+    start();
+  })();
+  </script>
+</body>
+</html>
