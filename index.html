@@ -177,6 +177,13 @@
           </div>
         </article>
         <article class="menu-card">
+          <h2>グラビティ・フリップランナー</h2>
+          <p>重力を反転させて天井と地面を疾走するハイスピード無限ランナー。トゲやレーザーをかわし、タイムスローとコンボでスコアを伸ばそう。</p>
+          <div class="menu-actions">
+            <button id="menuGravityBtn" type="button">グラビティ走</button>
+          </div>
+        </article>
+        <article class="menu-card">
           <h2>スカイダイブ・インフェルノ</h2>
           <p>無限に広がる空と灼熱の深層を落下し続けるスカイダイバーアクション。燃え盛るリングを潜り抜け、アイテムと加速モードでスコアを稼ごう。</p>
           <div class="menu-actions">
@@ -216,6 +223,7 @@
     const bladeBtn = document.getElementById('menuBladeBtn');
     const towerBtn = document.getElementById('menuTowerBtn');
     const runnerBtn = document.getElementById('menuRunnerBtn');
+    const gravityBtn = document.getElementById('menuGravityBtn');
     const skydiveBtn = document.getElementById('menuSkydiveBtn');
     const echoesBtn = document.getElementById('menuEchoesBtn');
     const deadzoneBtn = document.getElementById('menuDeadzoneBtn');
@@ -280,6 +288,12 @@
     if (runnerBtn) {
       runnerBtn.addEventListener('click', () => {
         window.location.href = 'metrorunner.html';
+      });
+    }
+
+    if (gravityBtn) {
+      gravityBtn.addEventListener('click', () => {
+        window.location.href = 'gravityflip.html';
       });
     }
 
