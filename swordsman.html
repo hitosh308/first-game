@@ -71,6 +71,16 @@
       top: 0;
       z-index: 20;
     }
+    .blade-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex: 1 1 auto;
+      flex-wrap: wrap;
+    }
+    .blade-controls .blade-hud {
+      flex: 1 1 auto;
+    }
     .blade-hud {
       display: flex;
       gap: 0.5rem;
@@ -243,6 +253,12 @@
       font-size: 0.95rem;
       opacity: 0.76;
     }
+    .blade-result-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
     .blade-overlay .blade-retry-hint {
       font-size: 0.85rem;
       opacity: 0.65;
@@ -256,6 +272,10 @@
       .blade-topbar {
         flex-direction: column;
         align-items: stretch;
+      }
+      .blade-controls {
+        width: 100%;
+        justify-content: center;
       }
       .blade-hud { justify-content: center; }
       .hud-item { min-width: 45%; }
@@ -327,22 +347,25 @@
 <body>
   <div class="blade-app" id="bladeApp">
     <header class="blade-topbar">
-      <div class="blade-hud">
-        <div class="hud-item" id="hudScore">
-          <span>スコア</span>
-          <strong id="bladeScore">0</strong>
-        </div>
-        <div class="hud-item" id="hudCombo">
-          <span>コンボ倍率</span>
-          <strong id="bladeCombo">×1.0</strong>
-        </div>
-        <div class="hud-item" id="hudLife">
-          <span>残りライフ</span>
-          <div class="blade-life" id="bladeLife" data-danger="false"></div>
-        </div>
-        <div class="hud-item">
-          <span>ベストスコア</span>
-          <strong id="bladeBest">0</strong>
+      <div class="blade-controls">
+        <button id="bladeMenu" type="button" aria-label="メニューに戻る">メニュー</button>
+        <div class="blade-hud">
+          <div class="hud-item" id="hudScore">
+            <span>スコア</span>
+            <strong id="bladeScore">0</strong>
+          </div>
+          <div class="hud-item" id="hudCombo">
+            <span>コンボ倍率</span>
+            <strong id="bladeCombo">×1.0</strong>
+          </div>
+          <div class="hud-item" id="hudLife">
+            <span>残りライフ</span>
+            <div class="blade-life" id="bladeLife" data-danger="false"></div>
+          </div>
+          <div class="hud-item">
+            <span>ベストスコア</span>
+            <strong id="bladeBest">0</strong>
+          </div>
         </div>
       </div>
       <button id="bladeMute" class="blade-mute" type="button" title="ミュート切替" aria-label="ミュート切替" aria-pressed="false">🔊</button>
@@ -378,7 +401,10 @@
             <strong id="bladeFinalScore">0</strong>
             <span>ベスト: <span id="bladeFinalBest">0</span></span>
           </div>
-          <button id="bladeRetry" class="blade-primary" type="button">もう一度挑戦</button>
+          <div class="blade-result-actions">
+            <button id="bladeRetry" class="blade-primary" type="button">もう一度挑戦</button>
+            <button id="bladeMenuResult" type="button" aria-label="メニューに戻る">メニュー</button>
+          </div>
           <p class="blade-retry-hint">スペースキーでもリトライできます。</p>
         </div>
       </div>
@@ -399,6 +425,8 @@
     const gameOverOverlay = document.getElementById('bladeGameOver');
     const startBtn = document.getElementById('bladeStart');
     const retryBtn = document.getElementById('bladeRetry');
+    const menuBtn = document.getElementById('bladeMenu');
+    const menuResultBtn = document.getElementById('bladeMenuResult');
     const finalScoreEl = document.getElementById('bladeFinalScore');
     const finalBestEl = document.getElementById('bladeFinalBest');
     const muteBtn = document.getElementById('bladeMute');
@@ -1440,6 +1468,10 @@
       muteBtn.setAttribute('aria-pressed', sound.enabled ? 'false' : 'true');
     }
 
+    function goToMenu() {
+      window.location.href = 'index.html';
+    }
+
     function handlePointerDown(event) {
       event.preventDefault();
       if (state.status === 'title') {
@@ -1462,6 +1494,9 @@
       } else if (event.code === 'KeyM') {
         event.preventDefault();
         toggleMute();
+      } else if (event.code === 'Escape') {
+        event.preventDefault();
+        goToMenu();
       }
     }
 
@@ -1502,6 +1537,18 @@
     retryBtn.addEventListener('click', () => {
       startGame();
     });
+
+    if (menuBtn) {
+      menuBtn.addEventListener('click', () => {
+        goToMenu();
+      });
+    }
+
+    if (menuResultBtn) {
+      menuResultBtn.addEventListener('click', () => {
+        goToMenu();
+      });
+    }
 
     muteBtn.addEventListener('click', () => {
       toggleMute();
