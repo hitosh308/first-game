@@ -769,8 +769,8 @@
       ammo: { label: '弾薬', effect: () => addAmmo(24) },
       stamina: { label: 'スタミナ', effect: () => { player.stamina = Math.min(player.maxStamina, player.stamina + 40); } },
       flash: { label: '閃光', effect: () => { triggerFlash(); } },
-      key: { label: '鍵', effect: () => unlockExit(); },
-      toolkit: { label: '工具', effect: () => reduceCooldowns(); },
+      key: { label: '鍵', effect: () => unlockExit() },
+      toolkit: { label: '工具', effect: () => reduceCooldowns() },
     };
 
     const tutorialSteps = [
