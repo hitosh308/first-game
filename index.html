@@ -148,6 +148,13 @@
             <button id="menuBladeBtn" type="button">ラン＆スラッシュ</button>
           </div>
         </article>
+        <article class="menu-card">
+          <h2>フロア99</h2>
+          <p>崩れ落ちる床を駆け抜けて塔を駆け上がる無限クライムアクション。罠や障害物を避けつつ、アイテムとコンボでスコアを伸ばそう。</p>
+          <div class="menu-actions">
+            <button id="menuTowerBtn" type="button">エンドレスクライム</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
@@ -158,6 +165,7 @@
     const scoreBtn = document.getElementById('menuShooterScoreBtn');
     const survivalBtn = document.getElementById('menuShooterSurvivalBtn');
     const bladeBtn = document.getElementById('menuBladeBtn');
+    const towerBtn = document.getElementById('menuTowerBtn');
 
     function getContinueData() {
       try {
@@ -206,6 +214,12 @@
     if (bladeBtn) {
       bladeBtn.addEventListener('click', () => {
         window.location.href = 'swordsman.html';
+      });
+    }
+
+    if (towerBtn) {
+      towerBtn.addEventListener('click', () => {
+        window.location.href = 'floor99.html';
       });
     }
 
