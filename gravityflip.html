@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>グラビティ・フリップランナー</title>
   <style>
     :root {
@@ -39,7 +40,12 @@
     }
     .app {
       position: relative;
-      width: min(1100px, 100%);
+      width: 100%;
+      max-width: 1100px;
+      --frame-max-width: 1100px;
+      --frame-horizontal-gap: var(--page-padding);
+      --frame-vertical-gap: var(--page-padding);
+      --frame-min-width: 280px;
       aspect-ratio: 16 / 9;
       background: rgba(4, 8, 14, 0.94);
       border-radius: clamp(1rem, 2vw, 1.4rem);
@@ -314,6 +320,12 @@
     @keyframes toast-out {
       to { opacity: 0; transform: translateY(10px); }
     }
+    @media (max-width: 900px), (max-height: 700px) {
+      body {
+        align-items: stretch;
+        justify-content: flex-start;
+      }
+    }
     @media (max-width: 680px) {
       .hud-card { flex: 1; min-width: auto; }
       .combo-meter { width: 100%; }
@@ -331,8 +343,8 @@
     }
   </style>
 </head>
-<body>
-  <div class="app" id="app" aria-label="グラビティ・フリップランナー">
+<body class="mobile-full-bleed">
+  <div class="app responsive-frame responsive-frame--wide" id="app" aria-label="グラビティ・フリップランナー">
     <canvas id="gameCanvas" width="1280" height="720" role="img" aria-label="ゲーム画面"></canvas>
     <div class="hud" aria-live="polite">
       <div class="hud-row">

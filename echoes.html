@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>エコーズ・オブ・シティ</title>
   <style>
     :root {
@@ -40,7 +41,12 @@
     }
     .app {
       position: relative;
-      width: min(1100px, 100%);
+      width: 100%;
+      max-width: 1100px;
+      --frame-max-width: 1100px;
+      --frame-horizontal-gap: var(--page-padding);
+      --frame-vertical-gap: var(--page-padding);
+      --frame-min-width: 280px;
       aspect-ratio: 16 / 9;
       background: rgba(5,9,14,0.85);
       border-radius: 1.2rem;
@@ -364,7 +370,7 @@
       body {
         flex-direction: column;
         justify-content: flex-start;
-        align-items: center;
+        align-items: stretch;
       }
     }
 
@@ -533,8 +539,8 @@
     }
   </style>
 </head>
-<body>
-  <div class="app">
+<body class="mobile-full-bleed">
+  <div class="app responsive-frame responsive-frame--wide">
     <canvas id="game" width="960" height="540"></canvas>
     <div class="hud-layer">
       <div class="top-stats">

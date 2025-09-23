@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>メトロランナー：リミックス</title>
   <style>
     :root {
@@ -42,7 +43,12 @@
     }
     .app {
       position: relative;
-      width: min(1100px, 100%);
+      width: 100%;
+      max-width: 1100px;
+      --frame-max-width: 1100px;
+      --frame-horizontal-gap: var(--page-padding);
+      --frame-vertical-gap: var(--page-padding);
+      --frame-min-width: 280px;
       aspect-ratio: 16 / 9;
       background: rgba(6,10,18,0.9);
       border-radius: 1.2rem;
@@ -377,9 +383,10 @@
     body.orientation-blocked {
       overflow: hidden;
     }
-    @media (max-width: 720px) {
+    @media (max-width: 720px), (max-height: 700px) {
       body {
         align-items: flex-start;
+        justify-content: flex-start;
       }
       .app {
         border-radius: 0.9rem;
@@ -450,8 +457,8 @@
     }
   </style>
 </head>
-<body>
-  <div class="app">
+<body class="mobile-full-bleed">
+  <div class="app responsive-frame responsive-frame--wide">
     <canvas id="gameCanvas" width="1280" height="720" aria-label="ゲーム画面"></canvas>
     <div class="hud" aria-hidden="true">
       <div class="hud-row">
