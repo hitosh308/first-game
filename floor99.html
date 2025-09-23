@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>フロア99</title>
+  <style>
+    :root {
+      color-scheme: dark light;
+      --bg: #070b12;
+      --bg-soft: #111a28;
+      --panel: rgba(10, 16, 26, 0.86);
+      --panel-strong: rgba(18, 28, 44, 0.92);
+      --accent: #6dc7ff;
+      --accent-strong: #39a8ff;
+      --danger: #ff6f8e;
+      --warning: #ffb449;
+      --success: #5be0b5;
+      --text: #f5f7fa;
+      font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: radial-gradient(circle at 20% 20%, rgba(100,160,255,0.25), transparent 60%),
+                  radial-gradient(circle at 80% 10%, rgba(60,100,200,0.2), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+    }
+    button {
+      font: inherit;
+      border-radius: 0.6rem;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: inherit;
+      padding: 0.65rem 1.1rem;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(255,255,255,0.24), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+    button:hover:not(:disabled) {
+      background: rgba(255,255,255,0.16);
+    }
+    button:hover:not(:disabled)::after { opacity: 0.4; }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+    .tower-app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .tower-topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      background: rgba(8, 14, 24, 0.84);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 18px 36px rgba(0,0,0,0.35);
+    }
+    .hud-left {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+    .hud-item {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0.35rem 0.9rem;
+      background: rgba(255,255,255,0.08);
+      border-radius: 0.65rem;
+      min-width: 120px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+    .hud-item span {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      opacity: 0.7;
+      text-transform: uppercase;
+    }
+    .hud-item strong {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+    .life-strip {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.2rem;
+      align-items: center;
+    }
+    .life-heart {
+      width: 18px;
+      height: 16px;
+      background: linear-gradient(135deg, #ff708a, #ff9ab0);
+      clip-path: path('M9 3 C9 -1 16 -1 16 4 C16 8 9 12 9 16 C9 12 2 8 2 4 C2 -1 9 -1 9 3 Z');
+      filter: drop-shadow(0 2px 4px rgba(255,105,135,0.35));
+      opacity: 0.88;
+    }
+    .hud-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .hud-badge {
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+    .hud-btn {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .hud-btn[aria-pressed="true"] {
+      background: rgba(255,255,255,0.2);
+      box-shadow: 0 0 0 2px rgba(109,199,255,0.45);
+    }
+    .hud-buffs {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.35rem;
+      flex-wrap: wrap;
+    }
+    .buff-tag {
+      padding: 0.25rem 0.55rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      background: rgba(255,255,255,0.16);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14);
+    }
+    .buff-tag.wing { background: rgba(93,224,181,0.25); }
+    .buff-tag.treasure { background: rgba(255,180,73,0.25); }
+
+    .tower-main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: clamp(1rem, 4vw, 2.5rem);
+    }
+    .tower-stage {
+      position: relative;
+      width: min(520px, 94vw);
+      aspect-ratio: 2 / 3;
+      background: rgba(12,18,28,0.82);
+      border-radius: 1.4rem;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.45);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+    .tower-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: clamp(1.5rem, 4vw, 2.5rem);
+      gap: 1.2rem;
+      background: linear-gradient(160deg, rgba(8,12,20,0.92), rgba(8,12,22,0.82));
+      color: var(--text);
+      transition: opacity 0.35s ease;
+      z-index: 5;
+    }
+    .tower-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .tower-overlay h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 2.9rem);
+      letter-spacing: 0.08em;
+    }
+    .tower-overlay p {
+      margin: 0;
+      line-height: 1.7;
+      color: rgba(245,247,250,0.82);
+    }
+    .tower-difficulty {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+      width: min(420px, 100%);
+    }
+    .tower-difficulty button {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 0.95rem;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      font-weight: 600;
+    }
+    .tower-difficulty button span {
+      font-size: 0.75rem;
+      font-weight: 400;
+      opacity: 0.72;
+      letter-spacing: 0.04em;
+    }
+    .tower-difficulty button.active {
+      background: linear-gradient(145deg, rgba(80,160,255,0.28), rgba(40,120,255,0.2));
+      box-shadow: 0 16px 32px rgba(70,140,255,0.28);
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      width: min(460px, 100%);
+    }
+    .result-card {
+      padding: 0.85rem 0.9rem;
+      border-radius: 0.9rem;
+      background: rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .result-card span {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .result-card strong {
+      font-size: 1.45rem;
+      letter-spacing: 0.04em;
+    }
+    .overlay-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .tips {
+      font-size: 0.85rem;
+      opacity: 0.75;
+    }
+    @media (max-width: 640px) {
+      .tower-topbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .hud-left { justify-content: center; }
+      .hud-right { justify-content: center; }
+      .tower-stage { width: min(92vw, 480px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="tower-app">
+    <header class="tower-topbar">
+      <div>
+        <div class="hud-left">
+          <div class="hud-item">
+            <span>階層</span>
+            <strong id="hudFloor">1F</strong>
+          </div>
+          <div class="hud-item">
+            <span>スコア</span>
+            <strong id="hudScore">0</strong>
+          </div>
+          <div class="hud-item">
+            <span>コンボ</span>
+            <strong id="hudCombo">x1.0</strong>
+          </div>
+          <div class="hud-item">
+            <span>ライフ</span>
+            <div class="life-strip" id="hudLife"></div>
+          </div>
+        </div>
+        <div class="hud-buffs" id="hudBuffs"></div>
+      </div>
+      <div class="hud-right">
+        <div class="hud-badge" id="hudDifficulty">NORMAL</div>
+        <div class="hud-badge" id="hudBest">BEST 0</div>
+        <button class="hud-btn" id="hudMuteBtn" type="button" aria-pressed="false" title="ミュート切替">🔊</button>
+      </div>
+    </header>
+    <main class="tower-main">
+      <div class="tower-stage">
+        <canvas id="towerCanvas" width="480" height="720" aria-label="ゲーム画面"></canvas>
+        <div class="tower-overlay" id="startOverlay">
+          <h1>フロア99</h1>
+          <p>崩れ落ちる床を駆け抜け、危険な罠と障害物をかわしながら塔の最上階を目指そう。クリック / タップ / スペースキーでジャンプできます。</p>
+          <div class="tower-difficulty">
+            <button type="button" data-diff="easy" class="active">
+              EASY
+              <span>床崩落が遅くアイテムが豊富</span>
+            </button>
+            <button type="button" data-diff="normal">
+              NORMAL
+              <span>標準的なバランス</span>
+            </button>
+            <button type="button" data-diff="hard">
+              HARD
+              <span>床が早く崩れ罠も多数</span>
+            </button>
+          </div>
+          <button id="startBtn" type="button">ゲームスタート</button>
+          <p class="tips">長押しでジャンプの高さが伸びます。宝箱でスコアが倍増、ハートでライフ回復、ウィングでしばらく落下しません。</p>
+        </div>
+        <div class="tower-overlay hidden" id="gameOverOverlay">
+          <h2>ゲームオーバー</h2>
+          <div class="result-grid">
+            <div class="result-card">
+              <span>到達階層</span>
+              <strong id="resultFloor">1F</strong>
+            </div>
+            <div class="result-card">
+              <span>スコア</span>
+              <strong id="resultScore">0</strong>
+            </div>
+            <div class="result-card">
+              <span>ベストスコア</span>
+              <strong id="resultBest">0</strong>
+            </div>
+          </div>
+          <div class="overlay-actions">
+            <button id="retryBtn" type="button">リトライ</button>
+            <button id="menuBtn" type="button">メニューへ</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+  (() => {
+    const canvas = document.getElementById('towerCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const hudFloor = document.getElementById('hudFloor');
+    const hudScore = document.getElementById('hudScore');
+    const hudCombo = document.getElementById('hudCombo');
+    const hudLife = document.getElementById('hudLife');
+    const hudBuffs = document.getElementById('hudBuffs');
+    const hudDiff = document.getElementById('hudDifficulty');
+    const hudBest = document.getElementById('hudBest');
+    const muteBtn = document.getElementById('hudMuteBtn');
+
+    const startOverlay = document.getElementById('startOverlay');
+    const gameOverOverlay = document.getElementById('gameOverOverlay');
+    const startBtn = document.getElementById('startBtn');
+    const retryBtn = document.getElementById('retryBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const diffButtons = Array.from(document.querySelectorAll('.tower-difficulty button'));
+
+    const resultFloor = document.getElementById('resultFloor');
+    const resultScore = document.getElementById('resultScore');
+    const resultBest = document.getElementById('resultBest');
+
+    const storageKey = 'floor99_best_score';
+
+    const difficulties = {
+      easy: {
+        label: 'EASY',
+        collapseDelay: 2.6,
+        collapseSpeed: 520,
+        floorGap: 130,
+        floorGapVariance: 28,
+        runSpeed: 150,
+        gravity: 2200,
+        jumpSpeed: 840,
+        holdBoost: 1400,
+        holdDuration: 0.18,
+        coyoteTime: 0.14,
+        spikeChance: 0.14,
+        obstacleChance: 0.2,
+        fallChance: 0.12,
+        itemChance: 0.48,
+        minFloorWidth: 200,
+        maxFloorWidth: 320
+      },
+      normal: {
+        label: 'NORMAL',
+        collapseDelay: 2.05,
+        collapseSpeed: 600,
+        floorGap: 150,
+        floorGapVariance: 32,
+        runSpeed: 170,
+        gravity: 2360,
+        jumpSpeed: 880,
+        holdBoost: 1650,
+        holdDuration: 0.17,
+        coyoteTime: 0.12,
+        spikeChance: 0.2,
+        obstacleChance: 0.28,
+        fallChance: 0.2,
+        itemChance: 0.34,
+        minFloorWidth: 182,
+        maxFloorWidth: 300
+      },
+      hard: {
+        label: 'HARD',
+        collapseDelay: 1.6,
+        collapseSpeed: 680,
+        floorGap: 164,
+        floorGapVariance: 34,
+        runSpeed: 188,
+        gravity: 2520,
+        jumpSpeed: 910,
+        holdBoost: 1820,
+        holdDuration: 0.16,
+        coyoteTime: 0.1,
+        spikeChance: 0.26,
+        obstacleChance: 0.36,
+        fallChance: 0.28,
+        itemChance: 0.24,
+        minFloorWidth: 170,
+        maxFloorWidth: 280
+      }
+    };
+
+    const audio = {
+      ctx: null,
+      muted: false,
+      ensure() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+          }
+        }
+      },
+      play(type) {
+        if (this.muted) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.16, now);
+        let duration = 0.22;
+        switch (type) {
+          case 'jump':
+            osc.frequency.setValueAtTime(540, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+            duration = 0.18;
+            break;
+          case 'collapse':
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(90, now + 0.32);
+            gain.gain.setValueAtTime(0.2, now);
+            duration = 0.32;
+            break;
+          case 'treasure':
+            osc.frequency.setValueAtTime(660, now);
+            osc.frequency.exponentialRampToValueAtTime(1240, now + 0.28);
+            gain.gain.setValueAtTime(0.18, now);
+            duration = 0.3;
+            break;
+          case 'gameover':
+            osc.frequency.setValueAtTime(420, now);
+            osc.frequency.linearRampToValueAtTime(140, now + 0.6);
+            gain.gain.setValueAtTime(0.24, now);
+            duration = 0.6;
+            break;
+          default:
+            osc.frequency.setValueAtTime(400, now);
+        }
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.type = 'triangle';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+    };
+
+    const input = {
+      holding: false,
+      pressed: false
+    };
+
+    const player = {
+      width: 48,
+      height: 64,
+      x: canvas.width / 2 - 24,
+      y: -120,
+      vx: 0,
+      vy: 0,
+      dir: 1,
+      onGround: false,
+      coyoteTimer: 0,
+      life: 3,
+      maxLife: 5,
+      invincibleTimer: 0,
+      wingTimer: 0,
+      jumpHold: false,
+      jumpHoldTime: 0,
+      currentFloor: null,
+      lastFloorId: null,
+      highestLevel: 1,
+      hitFlash: 0,
+      prevY: -120
+    };
+
+    const game = {
+      state: 'ready',
+      difficulty: 'easy',
+      floors: [],
+      obstacles: [],
+      items: [],
+      floorId: 0,
+      levelCounter: 0,
+      nextSpawnY: -150,
+      cameraY: -360,
+      score: 0,
+      floorReached: 1,
+      comboCount: 0,
+      comboMultiplier: 1,
+      treasureTimer: 0,
+      bestScore: Number(localStorage.getItem(storageKey) || 0)
+    };
+
+    let lastTime = 0;
+
+    const hudState = {
+      floor: null,
+      score: null,
+      combo: null,
+      best: null,
+      life: null,
+      wingLabel: null,
+      treasureActive: false
+    };
+
+    function setDifficulty(diffKey) {
+      if (!difficulties[diffKey]) return;
+      game.difficulty = diffKey;
+      diffButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.diff === diffKey);
+      });
+      hudDiff.textContent = difficulties[diffKey].label;
+    }
+
+    function updateLifeDisplay() {
+      if (hudState.life === player.life) return;
+      hudLife.innerHTML = '';
+      for (let i = 0; i < player.life; i += 1) {
+        const span = document.createElement('span');
+        span.className = 'life-heart';
+        hudLife.appendChild(span);
+      }
+      hudState.life = player.life;
+    }
+
+    function updateBuffDisplay() {
+      const wingActive = player.wingTimer > 0;
+      const wingLabel = wingActive ? player.wingTimer.toFixed(1) : null;
+      const treasureActive = game.treasureTimer > 0;
+      if (hudState.wingLabel === wingLabel && hudState.treasureActive === treasureActive) return;
+      const tags = [];
+      if (wingActive && wingLabel) {
+        tags.push(`<span class="buff-tag wing">WING ${wingLabel}s</span>`);
+      }
+      if (treasureActive) {
+        tags.push(`<span class="buff-tag treasure">SCORE x2</span>`);
+      }
+      hudBuffs.innerHTML = tags.join('');
+      hudState.wingLabel = wingLabel;
+      hudState.treasureActive = treasureActive;
+    }
+
+    function updateHUD() {
+      const floorValue = Math.max(game.floorReached, 1);
+      const scoreValue = Math.round(game.score);
+      const comboValue = `x${game.comboMultiplier.toFixed(1)}`;
+      const bestValue = Math.round(Math.max(game.bestScore, game.score));
+
+      if (hudState.floor !== floorValue) {
+        hudFloor.textContent = `${floorValue}F`;
+        hudState.floor = floorValue;
+      }
+      if (hudState.score !== scoreValue) {
+        hudScore.textContent = scoreValue.toLocaleString('ja-JP');
+        hudState.score = scoreValue;
+      }
+      if (hudState.combo !== comboValue) {
+        hudCombo.textContent = comboValue;
+        hudState.combo = comboValue;
+      }
+      if (hudState.best !== bestValue) {
+        hudBest.textContent = `BEST ${bestValue.toLocaleString('ja-JP')}`;
+        hudState.best = bestValue;
+      }
+      updateLifeDisplay();
+      updateBuffDisplay();
+    }
+
+    function createFloor(props = {}) {
+      game.floorId += 1;
+      const floor = {
+        id: game.floorId,
+        level: props.levelOverride ?? (game.levelCounter + 1),
+        x: props.x ?? 60,
+        y: props.y ?? -100,
+        width: props.width ?? 260,
+        height: 24,
+        type: props.type || 'normal',
+        touched: false,
+        timer: 0,
+        collapsing: false,
+        collapseVelocity: 0,
+        immutable: !!props.immutable
+      };
+      game.levelCounter = Math.max(game.levelCounter, floor.level);
+      if (floor.type === 'base') {
+        floor.immutable = true;
+      }
+      game.floors.push(floor);
+      return floor;
+    }
+
+    function spawnInitialFloors() {
+      game.floors.length = 0;
+      game.obstacles.length = 0;
+      game.items.length = 0;
+      game.floorId = 0;
+      game.levelCounter = 0;
+
+      const baseWidth = 340;
+      const baseFloor = createFloor({
+        y: 0,
+        x: canvas.width / 2 - baseWidth / 2,
+        width: baseWidth,
+        type: 'base',
+        immutable: true,
+        levelOverride: 1
+      });
+      baseFloor.touched = true;
+
+      const diff = difficulties[game.difficulty];
+      game.nextSpawnY = baseFloor.y - diff.floorGap;
+      game.levelCounter = 1;
+
+      while (game.nextSpawnY > game.cameraY - canvas.height * 1.4) {
+        spawnFloor();
+      }
+
+      player.x = canvas.width / 2 - player.width / 2;
+      player.y = baseFloor.y - player.height;
+      player.vx = diff.runSpeed;
+      player.vy = 0;
+      player.dir = 1;
+      player.onGround = true;
+      player.currentFloor = baseFloor;
+      player.lastFloorId = baseFloor.id;
+      player.highestLevel = baseFloor.level;
+      player.coyoteTimer = diff.coyoteTime;
+    }
+
+    function randomRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function spawnFloor() {
+      const diff = difficulties[game.difficulty];
+      const width = randomRange(diff.minFloorWidth, diff.maxFloorWidth);
+      const x = randomRange(36, canvas.width - width - 36);
+      const gap = diff.floorGap + Math.random() * diff.floorGapVariance;
+      const y = game.nextSpawnY;
+      game.nextSpawnY -= gap;
+
+      const level = game.levelCounter + 1;
+      let type = 'normal';
+      if (level > 2 && Math.random() < diff.spikeChance) {
+        type = 'spike';
+      }
+      const floor = createFloor({ y, x, width, type, levelOverride: level });
+      floor.timer = 0;
+
+      if (type === 'normal' && level > 2 && Math.random() < diff.itemChance) {
+        spawnItemOnFloor(floor);
+      }
+      if (level > 3 && Math.random() < diff.obstacleChance) {
+        spawnObstacleNearFloor(floor);
+      } else if (level > 4 && Math.random() < diff.fallChance) {
+        spawnFallingBlock(floor);
+      }
+    }
+
+    function spawnItemOnFloor(floor) {
+      const roll = Math.random();
+      let type = 'treasure';
+      if (roll < 0.33) type = 'heart';
+      else if (roll < 0.66) type = 'wing';
+      const item = {
+        id: `item_${floor.id}_${Math.random().toString(16).slice(2, 6)}`,
+        type,
+        x: floor.x + floor.width / 2 - 16,
+        y: floor.y - 32,
+        width: 32,
+        height: 32,
+        phase: Math.random() * Math.PI * 2,
+        collected: false
+      };
+      game.items.push(item);
+    }
+
+    function spawnObstacleNearFloor(floor) {
+      const type = Math.random() < 0.55 ? 'slider' : 'wall';
+      if (type === 'slider') {
+        const range = Math.min(randomRange(90, 170), canvas.width - 60);
+        const baseX = Math.max(28, floor.x - 40);
+        const slider = {
+          id: `obs_${floor.id}_${Math.random().toString(16).slice(2, 6)}`,
+          type: 'slider',
+          baseX,
+          x: baseX + Math.random() * Math.max(20, Math.min(range, canvas.width - baseX - 80)),
+          range: Math.max(60, Math.min(range, canvas.width - baseX - 60)),
+          width: 60,
+          height: randomRange(110, 180),
+          y: floor.y - randomRange(120, 180),
+          speed: randomRange(70, 110),
+          dir: Math.random() < 0.5 ? -1 : 1
+        };
+        game.obstacles.push(slider);
+      } else {
+        const wall = {
+          id: `obs_${floor.id}_${Math.random().toString(16).slice(2, 6)}`,
+          type: 'wall',
+          x: Math.random() < 0.5 ? floor.x - 30 : floor.x + floor.width - 30,
+          width: 60,
+          height: randomRange(120, 200),
+          y: floor.y - randomRange(80, 160),
+          slideDir: Math.random() < 0.5 ? -1 : 1,
+          slideRange: randomRange(0, 60),
+          slideBase: 0,
+          slideSpeed: randomRange(30, 60)
+        };
+        wall.slideBase = wall.x;
+        game.obstacles.push(wall);
+      }
+    }
+
+    function spawnFallingBlock(floor) {
+      const block = {
+        id: `fall_${floor.id}_${Math.random().toString(16).slice(2, 6)}`,
+        type: 'fall',
+        x: floor.x + Math.random() * Math.max(40, floor.width - 40),
+        y: floor.y - randomRange(200, 260),
+        width: 44,
+        height: 44,
+        vy: 0,
+        dropDelay: randomRange(0.25, 0.9)
+      };
+      game.obstacles.push(block);
+    }
+    function addScore(points) {
+      const treasureMultiplier = game.treasureTimer > 0 ? 2 : 1;
+      const total = Math.round(points * treasureMultiplier * game.comboMultiplier);
+      game.score += total;
+    }
+
+    function updateCombo() {
+      game.comboMultiplier = Math.min(2, 1 + game.comboCount * 0.1);
+    }
+
+    function resetCombo() {
+      game.comboCount = 0;
+      updateCombo();
+    }
+
+    function applyDamage(amount = 1) {
+      if (player.invincibleTimer > 0 || game.state !== 'playing') return;
+      player.life -= amount;
+      player.invincibleTimer = 1.2;
+      player.hitFlash = 0.35;
+      resetCombo();
+      player.vy = -difficulties[game.difficulty].jumpSpeed * 0.55;
+      player.dir *= -1;
+      if (player.life <= 0) {
+        triggerGameOver();
+      }
+      updateLifeDisplay();
+    }
+
+    function triggerGameOver() {
+      if (game.state === 'gameover') return;
+      game.state = 'gameover';
+      resultFloor.textContent = `${Math.max(game.floorReached, 1)}F`;
+      resultScore.textContent = Math.round(game.score).toLocaleString('ja-JP');
+      const best = Math.max(game.bestScore, game.score);
+      game.bestScore = best;
+      localStorage.setItem(storageKey, String(Math.round(best)));
+      resultBest.textContent = Math.round(best).toLocaleString('ja-JP');
+      hudBest.textContent = `BEST ${Math.round(best).toLocaleString('ja-JP')}`;
+      hudState.best = Math.round(best);
+      gameOverOverlay.classList.remove('hidden');
+      startOverlay.classList.add('hidden');
+      audio.play('gameover');
+    }
+
+    function resetGameState() {
+      const diff = difficulties[game.difficulty];
+      player.life = 3;
+      player.maxLife = 5;
+      player.invincibleTimer = 0;
+      player.wingTimer = 0;
+      player.hitFlash = 0;
+      player.jumpHold = false;
+      player.jumpHoldTime = 0;
+      player.dir = 1;
+      player.highestLevel = 1;
+      player.lastFloorId = null;
+      player.currentFloor = null;
+      game.score = 0;
+      game.floorReached = 1;
+      game.comboCount = 0;
+      game.comboMultiplier = 1;
+      game.treasureTimer = 0;
+      game.cameraY = -360;
+      game.nextSpawnY = -diff.floorGap;
+      spawnInitialFloors();
+      updateHUD();
+    }
+
+    function startGame() {
+      resetGameState();
+      game.state = 'playing';
+      startOverlay.classList.add('hidden');
+      gameOverOverlay.classList.add('hidden');
+    }
+
+    function loop(time) {
+      const dt = Math.min((time - lastTime) / 1000 || 0, 0.05);
+      lastTime = time;
+
+      if (game.state === 'playing') {
+        updateGame(dt);
+      }
+      renderGame();
+      requestAnimationFrame(loop);
+    }
+
+    function updateGame(dt) {
+      const diff = difficulties[game.difficulty];
+      player.prevY = player.y;
+
+      if (player.onGround) {
+        player.coyoteTimer = diff.coyoteTime;
+      } else if (player.coyoteTimer > 0) {
+        player.coyoteTimer = Math.max(0, player.coyoteTimer - dt);
+      }
+
+      player.invincibleTimer = Math.max(0, player.invincibleTimer - dt);
+      player.wingTimer = Math.max(0, player.wingTimer - dt);
+      game.treasureTimer = Math.max(0, game.treasureTimer - dt);
+      if (player.hitFlash > 0) player.hitFlash = Math.max(0, player.hitFlash - dt);
+
+      if (input.pressed) {
+        attemptJump();
+        input.pressed = false;
+      }
+
+      if (player.jumpHold && input.holding) {
+        player.jumpHoldTime += dt;
+        if (player.jumpHoldTime < diff.holdDuration) {
+          player.vy -= diff.holdBoost * dt;
+        } else {
+          player.jumpHold = false;
+        }
+      } else {
+        player.jumpHold = false;
+      }
+
+      const gravity = player.wingTimer > 0 ? diff.gravity * 0.28 : diff.gravity;
+      player.vy += gravity * dt;
+      if (player.wingTimer > 0) {
+        player.vy = Math.min(player.vy, 90);
+      } else {
+        player.vy = Math.min(player.vy, 980);
+      }
+
+      if (player.onGround) {
+        player.vx = player.dir * diff.runSpeed;
+      }
+
+      player.x += player.vx * dt;
+      player.y += player.vy * dt;
+
+      if (player.x < 28) {
+        player.x = 28;
+        player.dir = 1;
+        if (!player.onGround) player.vx = Math.abs(player.vx);
+      } else if (player.x + player.width > canvas.width - 28) {
+        player.x = canvas.width - 28 - player.width;
+        player.dir = -1;
+        if (!player.onGround) player.vx = -Math.abs(player.vx);
+      }
+
+      const prevBottom = player.prevY + player.height;
+      const currentBottom = player.y + player.height;
+      let landedFloor = null;
+
+      for (let i = game.floors.length - 1; i >= 0; i -= 1) {
+        const floor = game.floors[i];
+        if (floor.touched && !floor.immutable && !floor.collapsing) {
+          floor.timer += dt;
+          if (floor.timer >= diff.collapseDelay) {
+            floor.collapsing = true;
+            floor.collapseVelocity = 40;
+            audio.play('collapse');
+            if (player.currentFloor && player.currentFloor.id === floor.id) {
+              player.onGround = false;
+            }
+          }
+        }
+        if (floor.collapsing) {
+          floor.collapseVelocity += diff.gravity * 0.8 * dt;
+          floor.y += floor.collapseVelocity * dt;
+          if (floor.y - game.cameraY > canvas.height + 120) {
+            if (player.currentFloor && player.currentFloor.id === floor.id) {
+              player.currentFloor = null;
+              player.onGround = false;
+            }
+            game.floors.splice(i, 1);
+            continue;
+          }
+        }
+        if (!floor.collapsing && prevBottom <= floor.y && currentBottom >= floor.y) {
+          const playerLeft = player.x + player.width * 0.2;
+          const playerRight = player.x + player.width * 0.8;
+          if (playerRight > floor.x && playerLeft < floor.x + floor.width) {
+            landedFloor = floor;
+          }
+        }
+        if (floor.y - game.cameraY > canvas.height + 200) {
+          if (player.currentFloor && player.currentFloor.id === floor.id) {
+            player.currentFloor = null;
+          }
+          game.floors.splice(i, 1);
+        }
+      }
+
+      if (landedFloor && !landedFloor.collapsing) {
+        player.y = landedFloor.y - player.height;
+        player.vy = 0;
+        player.onGround = true;
+        player.currentFloor = landedFloor;
+        player.dir = Math.sign(player.vx || player.dir) || 1;
+        landedFloor.touched = true;
+
+        if (landedFloor.level > player.highestLevel) {
+          player.highestLevel = landedFloor.level;
+          if (landedFloor.type !== 'spike') {
+            game.floorReached = landedFloor.level;
+            game.comboCount += 1;
+            updateCombo();
+            addScore(10);
+          }
+        }
+
+        if (landedFloor.type === 'spike') {
+          applyDamage(1);
+          player.vy = -diff.jumpSpeed * 0.6;
+          player.onGround = false;
+        }
+      } else {
+        if (player.onGround) {
+          player.onGround = false;
+        }
+      }
+
+      if (player.onGround && player.currentFloor) {
+        const floor = player.currentFloor;
+        const leftBound = floor.x;
+        const rightBound = floor.x + floor.width - player.width;
+        if (player.x <= leftBound) {
+          player.x = leftBound;
+          player.dir = 1;
+        } else if (player.x >= rightBound) {
+          player.x = rightBound;
+          player.dir = -1;
+        }
+      }
+
+      for (let i = game.obstacles.length - 1; i >= 0; i -= 1) {
+        const obs = game.obstacles[i];
+        if (obs.type === 'slider') {
+          obs.x += obs.speed * dt * obs.dir;
+          if (obs.x < obs.baseX) {
+            obs.x = obs.baseX;
+            obs.dir = 1;
+          } else if (obs.x > obs.baseX + obs.range) {
+            obs.x = obs.baseX + obs.range;
+            obs.dir = -1;
+          }
+        } else if (obs.type === 'wall') {
+          if (obs.slideRange > 0) {
+            obs.slideBase += obs.slideSpeed * dt * obs.slideDir;
+            if (obs.slideBase > obs.x + obs.slideRange) {
+              obs.slideDir = -1;
+            } else if (obs.slideBase < obs.x - obs.slideRange) {
+              obs.slideDir = 1;
+            }
+            obs.x = obs.slideBase;
+          }
+        } else if (obs.type === 'fall') {
+          if (obs.dropDelay > 0) {
+            obs.dropDelay -= dt;
+          } else {
+            obs.vy += diff.gravity * 0.75 * dt;
+            obs.y += obs.vy * dt;
+          }
+          if (obs.y - game.cameraY > canvas.height + 200) {
+            game.obstacles.splice(i, 1);
+            continue;
+          }
+        }
+
+        const screenY = obs.y - game.cameraY;
+        if (screenY > canvas.height + 220) {
+          game.obstacles.splice(i, 1);
+          continue;
+        }
+
+        if (rectsIntersect(player.x, player.y, player.width, player.height, obs.x, obs.y, obs.width, obs.height)) {
+          applyDamage(1);
+          if (obs.type === 'slider' || obs.type === 'wall') {
+            if (player.x + player.width / 2 < obs.x + obs.width / 2) {
+              player.dir = -1;
+              player.vx = -Math.abs(player.vx);
+            } else {
+              player.dir = 1;
+              player.vx = Math.abs(player.vx);
+            }
+          } else if (obs.type === 'fall') {
+            obs.vy *= 0.6;
+          }
+        }
+      }
+
+      for (let i = game.items.length - 1; i >= 0; i -= 1) {
+        const item = game.items[i];
+        item.phase += dt * 3;
+        const offset = Math.sin(item.phase) * 6;
+        const itemTop = item.y + offset;
+        if (itemTop - game.cameraY > canvas.height + 200) {
+          game.items.splice(i, 1);
+          continue;
+        }
+        if (!item.collected && rectsIntersect(player.x, player.y, player.width, player.height, item.x, itemTop, item.width, item.height)) {
+          item.collected = true;
+          handleItemPickup(item.type);
+          game.items.splice(i, 1);
+        }
+      }
+
+      const targetCamera = player.y - canvas.height * 0.45;
+      if (targetCamera < game.cameraY) {
+        game.cameraY += (targetCamera - game.cameraY) * 0.2;
+      } else {
+        game.cameraY += (targetCamera - game.cameraY) * 0.05;
+      }
+
+      while (game.nextSpawnY > game.cameraY - canvas.height * 1.4) {
+        spawnFloor();
+      }
+
+      if (player.y - game.cameraY > canvas.height + 60) {
+        triggerGameOver();
+      }
+
+      updateHUD();
+    }
+    function attemptJump() {
+      if (game.state !== 'playing') return;
+      const diff = difficulties[game.difficulty];
+      if (player.onGround || player.coyoteTimer > 0.01) {
+        player.vy = -diff.jumpSpeed;
+        player.onGround = false;
+        player.jumpHold = true;
+        player.jumpHoldTime = 0;
+        player.coyoteTimer = 0;
+        audio.play('jump');
+      }
+    }
+
+    function rectsIntersect(ax, ay, aw, ah, bx, by, bw, bh) {
+      return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    }
+
+    function handleItemPickup(type) {
+      if (type === 'treasure') {
+        game.treasureTimer = Math.max(game.treasureTimer, 8);
+        addScore(150);
+        audio.play('treasure');
+      } else if (type === 'heart') {
+        if (player.life < player.maxLife) {
+          player.life += 1;
+        }
+        addScore(60);
+        audio.play('treasure');
+      } else if (type === 'wing') {
+        player.wingTimer = Math.max(player.wingTimer, 5.5);
+        addScore(80);
+        audio.play('treasure');
+      }
+      updateLifeDisplay();
+    }
+
+    function renderGame() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#0a1320');
+      gradient.addColorStop(0.5, '#0e1b2e');
+      gradient.addColorStop(1, '#09111c');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const parallax = (game.cameraY % 80);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      for (let y = parallax; y < canvas.height; y += 80) {
+        ctx.fillRect(0, Math.round(y), canvas.width, 1);
+      }
+
+      for (const floor of game.floors) {
+        const screenY = floor.y - game.cameraY;
+        if (screenY > canvas.height + 120 || screenY + floor.height < -120) continue;
+        const grd = ctx.createLinearGradient(floor.x, screenY, floor.x, screenY + floor.height);
+        if (floor.type === 'spike') {
+          grd.addColorStop(0, '#2c3444');
+          grd.addColorStop(1, '#1c2434');
+        } else if (floor.type === 'base') {
+          grd.addColorStop(0, '#2a3a52');
+          grd.addColorStop(1, '#1b2638');
+        } else {
+          grd.addColorStop(0, '#253447');
+          grd.addColorStop(1, '#1a2534');
+        }
+        ctx.fillStyle = grd;
+        ctx.fillRect(floor.x, screenY, floor.width, floor.height);
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(floor.x, screenY, floor.width, 2);
+
+        if (floor.type === 'spike') {
+          const spikeCount = Math.max(3, Math.floor(floor.width / 16));
+          ctx.fillStyle = '#ff748b';
+          for (let i = 0; i < spikeCount; i += 1) {
+            const sx = floor.x + (i / spikeCount) * floor.width;
+            ctx.beginPath();
+            ctx.moveTo(sx, screenY + floor.height);
+            ctx.lineTo(sx + floor.width / spikeCount / 2, screenY - 10);
+            ctx.lineTo(sx + floor.width / spikeCount, screenY + floor.height);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+
+        if (floor.collapsing) {
+          ctx.fillStyle = 'rgba(255,90,110,0.35)';
+          ctx.fillRect(floor.x, screenY, floor.width, floor.height);
+        } else if (floor.touched && !floor.immutable) {
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
+          const timerRatio = Math.min(1, floor.timer / difficulties[game.difficulty].collapseDelay);
+          ctx.fillRect(floor.x, screenY, floor.width * timerRatio, 4);
+        }
+      }
+
+      for (const obs of game.obstacles) {
+        const screenY = obs.y - game.cameraY;
+        if (screenY > canvas.height + 160 || screenY + obs.height < -160) continue;
+        if (obs.type === 'slider') {
+          ctx.fillStyle = '#2d90ff';
+          ctx.fillRect(obs.x, screenY, obs.width, obs.height);
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          ctx.fillRect(obs.x + 6, screenY + 6, obs.width - 12, obs.height - 12);
+        } else if (obs.type === 'wall') {
+          ctx.fillStyle = '#1f2b3c';
+          ctx.fillRect(obs.x, screenY, obs.width, obs.height);
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
+          for (let y = screenY; y < screenY + obs.height; y += 16) {
+            ctx.fillRect(obs.x, y, obs.width, 2);
+          }
+        } else if (obs.type === 'fall') {
+          ctx.fillStyle = '#ffa24d';
+          ctx.fillRect(obs.x, screenY, obs.width, obs.height);
+          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.fillRect(obs.x + 6, screenY + 6, obs.width - 12, obs.height - 12);
+        }
+      }
+
+      for (const item of game.items) {
+        const offset = Math.sin(item.phase) * 6;
+        const screenY = item.y + offset - game.cameraY;
+        if (screenY > canvas.height + 120 || screenY + item.height < -120) continue;
+        ctx.save();
+        ctx.translate(item.x + item.width / 2, screenY + item.height / 2);
+        if (item.type === 'treasure') {
+          ctx.fillStyle = '#ffb347';
+          ctx.fillRect(-16, -12, 32, 24);
+          ctx.fillStyle = '#ffe9b0';
+          ctx.fillRect(-14, -4, 28, 8);
+        } else if (item.type === 'heart') {
+          ctx.fillStyle = '#ff6f8e';
+          ctx.beginPath();
+          ctx.moveTo(0, 12);
+          ctx.bezierCurveTo(18, -4, 12, -18, 0, -6);
+          ctx.bezierCurveTo(-12, -18, -18, -4, 0, 12);
+          ctx.fill();
+        } else if (item.type === 'wing') {
+          ctx.fillStyle = '#6de0ff';
+          ctx.beginPath();
+          ctx.moveTo(-16, 8);
+          ctx.quadraticCurveTo(-4, -12, 0, -2);
+          ctx.quadraticCurveTo(4, -12, 16, 8);
+          ctx.quadraticCurveTo(4, 0, 0, 6);
+          ctx.quadraticCurveTo(-4, 0, -16, 8);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      const playerScreenY = player.y - game.cameraY;
+      if (!(player.invincibleTimer > 0 && Math.floor(player.invincibleTimer * 10) % 2 === 0)) {
+        ctx.save();
+        ctx.translate(player.x + player.width / 2, playerScreenY + player.height / 2);
+        if (player.dir < 0) ctx.scale(-1, 1);
+        ctx.translate(-player.width / 2, -player.height / 2);
+        const bodyGradient = ctx.createLinearGradient(0, 0, 0, player.height);
+        bodyGradient.addColorStop(0, '#4f6cff');
+        bodyGradient.addColorStop(1, '#2038a8');
+        ctx.fillStyle = player.hitFlash > 0 ? 'rgba(255,100,120,0.8)' : bodyGradient;
+        ctx.fillRect(10, 6, player.width - 20, player.height - 12);
+        ctx.fillStyle = '#1a2030';
+        ctx.fillRect(10, player.height - 16, player.width - 20, 16);
+        ctx.fillStyle = '#b8e1ff';
+        ctx.fillRect(14, 16, player.width - 28, 20);
+        ctx.fillStyle = '#0d1320';
+        ctx.fillRect(12, 14, player.width - 24, 6);
+        ctx.fillStyle = '#ffb347';
+        ctx.fillRect(player.width - 18, player.height - 24, 10, 18);
+        if (player.wingTimer > 0) {
+          ctx.fillStyle = 'rgba(109,224,255,0.45)';
+          ctx.beginPath();
+          ctx.moveTo(-12, 18);
+          ctx.quadraticCurveTo(-24, 4, -12, -12);
+          ctx.quadraticCurveTo(0, -4, -4, 12);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(player.width + 12, 18);
+          ctx.quadraticCurveTo(player.width + 24, 4, player.width + 12, -12);
+          ctx.quadraticCurveTo(player.width, -4, player.width + 4, 12);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.font = '14px "Segoe UI", sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${Math.max(game.floorReached, 1)}F`, 12, 12);
+      ctx.fillText(`Score ${Math.round(game.score)}`, 12, 30);
+    }
+
+    function handlePointerDown(event) {
+      event.preventDefault();
+      input.holding = true;
+      input.pressed = true;
+      audio.ensure();
+      if (audio.ctx) {
+        audio.ctx.resume().catch(() => {});
+      }
+    }
+
+    function handlePointerUp(event) {
+      event.preventDefault();
+      input.holding = false;
+      player.jumpHold = false;
+    }
+
+    function handleKeyDown(event) {
+      if (event.code === 'Space') {
+        event.preventDefault();
+        if (!input.holding) {
+          input.pressed = true;
+          input.holding = true;
+        }
+        audio.ensure();
+        if (audio.ctx) {
+          audio.ctx.resume().catch(() => {});
+        }
+      }
+    }
+
+    function handleKeyUp(event) {
+      if (event.code === 'Space') {
+        event.preventDefault();
+        input.holding = false;
+        player.jumpHold = false;
+      }
+    }
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointerleave', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    muteBtn.addEventListener('click', () => {
+      audio.muted = !audio.muted;
+      muteBtn.setAttribute('aria-pressed', audio.muted ? 'true' : 'false');
+      muteBtn.textContent = audio.muted ? '🔇' : '🔊';
+    });
+
+    diffButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const diff = btn.dataset.diff;
+        setDifficulty(diff);
+      });
+    });
+
+    startBtn.addEventListener('click', () => {
+      startGame();
+    });
+
+    retryBtn.addEventListener('click', () => {
+      startGame();
+    });
+
+    menuBtn.addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
+    setDifficulty('easy');
+    updateHUD();
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>
