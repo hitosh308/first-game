@@ -1,0 +1,2382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>エコーズ・オブ・シティ</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+      --bg: radial-gradient(circle at top, rgba(38,60,98,0.35), rgba(7,12,20,0.95) 65%);
+      --panel: rgba(12,16,24,0.86);
+      --panel-border: rgba(255,255,255,0.12);
+      --accent: #70d7ff;
+      --accent-soft: rgba(112,215,255,0.22);
+      --text: #f2f6fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      padding: clamp(1rem, 3vw, 2rem);
+    }
+    .app {
+      position: relative;
+      width: min(1100px, 100%);
+      aspect-ratio: 16 / 9;
+      background: rgba(5,9,14,0.85);
+      border-radius: 1.2rem;
+      overflow: hidden;
+      box-shadow: 0 28px 80px rgba(0,0,0,0.6);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #05080f;
+    }
+    .hud-layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      padding: clamp(1.1rem, 3vw, 1.6rem);
+      gap: 0.75rem;
+    }
+    .top-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+    .stat-card {
+      background: rgba(10,16,24,0.78);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 0.9rem;
+      padding: 0.6rem 0.85rem;
+      min-width: 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      pointer-events: auto;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+    }
+    .stat-card.small {
+      min-width: 92px;
+      text-align: center;
+      gap: 0.2rem;
+      padding: 0.55rem 0.7rem;
+    }
+    .stat-card span {
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      opacity: 0.72;
+    }
+    .stat-card strong {
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+    }
+    .bar {
+      width: 100%;
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .bar .fill {
+      height: 100%;
+      background: linear-gradient(90deg, rgba(120,210,255,0.9), rgba(70,180,255,0.88));
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+    .bar .fill.skill {
+      background: linear-gradient(90deg, rgba(100,255,200,0.85), rgba(120,180,255,0.9));
+    }
+    .bottom-hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .skill-strip {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .skill-strip span {
+      padding: 0.3rem 0.6rem;
+      border-radius: 0.6rem;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      opacity: 0.45;
+      transition: opacity 0.2s ease, background 0.3s ease, border-color 0.3s ease;
+    }
+    .skill-strip span.active {
+      opacity: 0.95;
+      background: rgba(110,210,255,0.18);
+      border-color: rgba(110,210,255,0.35);
+      box-shadow: 0 0 12px rgba(110,210,255,0.2);
+    }
+    .hud-buttons {
+      display: flex;
+      gap: 0.5rem;
+      pointer-events: auto;
+    }
+    button {
+      font: inherit;
+      border: 1px solid rgba(112,215,255,0.5);
+      border-radius: 0.7rem;
+      background: rgba(112,215,255,0.16);
+      color: var(--text);
+      padding: 0.45rem 0.9rem;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: transform 0.14s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover {
+      background: rgba(112,215,255,0.28);
+      box-shadow: 0 10px 24px rgba(112,215,255,0.25);
+    }
+    button:active {
+      transform: translateY(2px) scale(0.98);
+    }
+    .message {
+      position: absolute;
+      left: 50%;
+      bottom: 14%;
+      transform: translateX(-50%);
+      background: rgba(10,16,24,0.9);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 0.9rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      max-width: 70%;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.4);
+    }
+    .message.show { opacity: 1; }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(5,9,14,0.82);
+      backdrop-filter: blur(14px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: clamp(1.6rem, 4vw, 2.8rem);
+    }
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .panel {
+      width: min(680px, 100%);
+      background: rgba(10,16,26,0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 1.1rem;
+      padding: clamp(1.5rem, 4vw, 2.6rem);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+    .panel h1, .panel h2, .panel h3 { margin: 0; letter-spacing: 0.05em; }
+    .panel p { margin: 0; line-height: 1.7; color: rgba(242,246,251,0.82); }
+    .panel ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      color: rgba(242,246,251,0.82);
+      line-height: 1.7;
+    }
+    .panel-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .panel-footer button { flex: 1; min-width: 160px; }
+    .upgrade-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .upgrade-card {
+      background: rgba(12,18,30,0.9);
+      border: 1px solid rgba(112,215,255,0.16);
+      border-radius: 0.95rem;
+      padding: 0.8rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .upgrade-card h3 {
+      font-size: 1rem;
+    }
+    .upgrade-card button {
+      margin-top: auto;
+    }
+    .result-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .result-stats div {
+      background: rgba(12,18,28,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 0.9rem;
+      padding: 0.9rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .result-stats span { font-size: 0.75rem; opacity: 0.7; }
+    .result-stats strong { font-size: 1.1rem; }
+    @media (max-width: 720px) {
+      .stat-card { min-width: 120px; }
+      .stat-card.small { min-width: calc(50% - 0.5rem); }
+      .panel { padding: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <canvas id="game" width="960" height="540"></canvas>
+    <div class="hud-layer">
+      <div class="top-stats">
+        <div class="stat-card">
+          <span>体力</span>
+          <div class="bar"><div id="hpBar" class="fill"></div></div>
+          <strong id="hpText">100 / 100</strong>
+        </div>
+        <div class="stat-card">
+          <span>スキルゲージ</span>
+          <div class="bar"><div id="skillBar" class="fill skill"></div></div>
+          <strong id="skillText">60 / 60</strong>
+        </div>
+        <div class="stat-card small">
+          <span>所持オーブ</span>
+          <strong id="orbText">0</strong>
+        </div>
+        <div class="stat-card small">
+          <span>探索率</span>
+          <strong id="exploreText">0%</strong>
+        </div>
+        <div class="stat-card small">
+          <span>撃破数</span>
+          <strong id="killText">0</strong>
+        </div>
+        <div class="stat-card small">
+          <span>データキャッシュ</span>
+          <strong id="cacheText">0 / 3</strong>
+        </div>
+      </div>
+      <div class="bottom-hud">
+        <div class="skill-strip" id="skillStrip">
+          <span data-skill="double">二段ジャンプ</span>
+          <span data-skill="dash">ダッシュ</span>
+          <span data-skill="climb">ウォールクライム</span>
+          <span data-skill="blade">エナジーブレード</span>
+        </div>
+        <div class="hud-buttons">
+          <button id="pauseBtn" type="button">一時停止</button>
+          <button id="muteBtn" type="button">ミュート</button>
+        </div>
+      </div>
+    </div>
+    <div class="message" id="messageBox"></div>
+    <div class="overlay active" id="titleOverlay">
+      <div class="panel">
+        <h1>エコーズ・オブ・シティ</h1>
+        <p>廃墟化した未来都市を探索し、失われた機能を取り戻す探索型アクションRPG。モジュールを回収して身体を拡張しながら、都市を制御するコアへと至りましょう。</p>
+        <h2>操作</h2>
+        <ul>
+          <li>← → / A D: 移動</li>
+          <li>↑ / W: インタラクト (ドア・装置)</li>
+          <li>スペース: ジャンプ (スキル獲得で二段ジャンプ)</li>
+          <li>Ctrl または タップ: 攻撃</li>
+          <li>Shift: ダッシュ (スキル獲得後)</li>
+        </ul>
+        <p>セーブ端末でエナジーオーブを消費して強化が可能。死亡するとオーブはその場に残ります。都市の謎を解き明かし、コア防衛AIを打ち倒しましょう。</p>
+        <div class="panel-footer">
+          <button id="startBtn" type="button">探索を開始</button>
+          <button id="muteBtnTitle" type="button">ミュート切替</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="pauseOverlay">
+      <div class="panel">
+        <h2>ポーズ</h2>
+        <p>探索を一時停止中です。</p>
+        <div class="panel-footer">
+          <button id="resumeBtn" type="button">再開</button>
+          <button id="restartBtn" type="button">最初から</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="upgradeOverlay">
+      <div class="panel">
+        <h2>アップグレード端末</h2>
+        <p>所持オーブを使用して能力を強化できます。</p>
+        <div class="upgrade-grid">
+          <div class="upgrade-card">
+            <h3>体力増幅</h3>
+            <p>最大体力を増加し、生存性を高めます。</p>
+            <strong id="hpCostLabel">30 オーブ</strong>
+            <button id="hpUpgradeBtn" type="button">強化する</button>
+          </div>
+          <div class="upgrade-card">
+            <h3>出力向上</h3>
+            <p>攻撃力を向上し、敵へのダメージを増やします。</p>
+            <strong id="atkCostLabel">35 オーブ</strong>
+            <button id="atkUpgradeBtn" type="button">強化する</button>
+          </div>
+          <div class="upgrade-card">
+            <h3>スキルコンデンサ</h3>
+            <p>スキルゲージ容量を拡張し、ダッシュやブレードを連続使用可能に。</p>
+            <strong id="skillCostLabel">25 オーブ</strong>
+            <button id="skillUpgradeBtn" type="button">強化する</button>
+          </div>
+        </div>
+        <div class="panel-footer">
+          <button id="upgradeCloseBtn" type="button">閉じる</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="resultOverlay">
+      <div class="panel">
+        <h2>コア制御奪還</h2>
+        <p>都市コアは再起動し、静寂だった街に再び律動が戻った。</p>
+        <div class="result-stats">
+          <div>
+            <span>探索率</span>
+            <strong id="resultExplore">0%</strong>
+          </div>
+          <div>
+            <span>撃破数</span>
+            <strong id="resultKills">0</strong>
+          </div>
+          <div>
+            <span>データキャッシュ</span>
+            <strong id="resultCaches">0 / 3</strong>
+          </div>
+          <div>
+            <span>経過時間</span>
+            <strong id="resultTime">0:00</strong>
+          </div>
+          <div>
+            <span>死亡回数</span>
+            <strong id="resultDeaths">0</strong>
+          </div>
+        </div>
+        <div class="panel-footer">
+          <button id="resultRestartBtn" type="button">再挑戦</button>
+          <button id="resultMenuBtn" type="button">タイトルへ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function () {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    const hpBar = document.getElementById('hpBar');
+    const hpText = document.getElementById('hpText');
+    const skillBar = document.getElementById('skillBar');
+    const skillText = document.getElementById('skillText');
+    const orbText = document.getElementById('orbText');
+    const exploreText = document.getElementById('exploreText');
+    const killText = document.getElementById('killText');
+    const cacheText = document.getElementById('cacheText');
+
+    const messageBox = document.getElementById('messageBox');
+    const titleOverlay = document.getElementById('titleOverlay');
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    const upgradeOverlay = document.getElementById('upgradeOverlay');
+    const resultOverlay = document.getElementById('resultOverlay');
+
+    const startBtn = document.getElementById('startBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const muteBtnTitle = document.getElementById('muteBtnTitle');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const upgradeCloseBtn = document.getElementById('upgradeCloseBtn');
+    const hpUpgradeBtn = document.getElementById('hpUpgradeBtn');
+    const atkUpgradeBtn = document.getElementById('atkUpgradeBtn');
+    const skillUpgradeBtn = document.getElementById('skillUpgradeBtn');
+    const hpCostLabel = document.getElementById('hpCostLabel');
+    const atkCostLabel = document.getElementById('atkCostLabel');
+    const skillCostLabel = document.getElementById('skillCostLabel');
+    const resultRestartBtn = document.getElementById('resultRestartBtn');
+    const resultMenuBtn = document.getElementById('resultMenuBtn');
+
+    const resultExplore = document.getElementById('resultExplore');
+    const resultKills = document.getElementById('resultKills');
+    const resultCaches = document.getElementById('resultCaches');
+    const resultTime = document.getElementById('resultTime');
+    const resultDeaths = document.getElementById('resultDeaths');
+
+    const skillStrip = document.getElementById('skillStrip');
+    const skillBadges = {
+      double: skillStrip.querySelector('[data-skill="double"]'),
+      dash: skillStrip.querySelector('[data-skill="dash"]'),
+      climb: skillStrip.querySelector('[data-skill="climb"]'),
+      blade: skillStrip.querySelector('[data-skill="blade"]')
+    };
+
+    const KEY_BINDINGS = {
+      ArrowLeft: 'left',
+      KeyA: 'left',
+      ArrowRight: 'right',
+      KeyD: 'right',
+      ArrowUp: 'up',
+      KeyW: 'up',
+      ArrowDown: 'down',
+      KeyS: 'down',
+      Space: 'jump',
+      KeyZ: 'attack',
+      KeyX: 'dash',
+      ControlLeft: 'attack',
+      ControlRight: 'attack',
+      ShiftLeft: 'dash',
+      ShiftRight: 'dash'
+    };
+
+    const input = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      jump: false,
+      attack: false,
+      dash: false,
+      jumpPressed: false,
+      attackPressed: false,
+      dashPressed: false,
+      interactPressed: false
+    };
+
+    function resetPressedFlags() {
+      input.jumpPressed = false;
+      input.attackPressed = false;
+      input.dashPressed = false;
+      input.interactPressed = false;
+    }
+
+    function handleKeyDown(e) {
+      const action = KEY_BINDINGS[e.code];
+      if (e.code === 'Escape') {
+        if (game.state === 'playing') {
+          pauseGame();
+        } else if (game.state === 'paused') {
+          resumeGame();
+        }
+        e.preventDefault();
+        return;
+      }
+      if (!action) return;
+      if ([ 'left', 'right', 'up', 'down', 'jump', 'attack', 'dash' ].includes(action)) {
+        e.preventDefault();
+      }
+      if (input[action]) {
+        if (action === 'jump') input.jumpPressed = false;
+        if (action === 'attack') input.attackPressed = false;
+        if (action === 'dash') input.dashPressed = false;
+        if (action === 'up') input.interactPressed = false;
+      }
+      input[action] = true;
+      if (action === 'jump') input.jumpPressed = true;
+      if (action === 'attack') input.attackPressed = true;
+      if (action === 'dash') input.dashPressed = true;
+      if (action === 'up') input.interactPressed = true;
+    }
+
+    function handleKeyUp(e) {
+      const action = KEY_BINDINGS[e.code];
+      if (!action) return;
+      input[action] = false;
+    }
+
+    document.addEventListener('keydown', handleKeyDown, { passive: false });
+    document.addEventListener('keyup', handleKeyUp, { passive: false });
+
+    canvas.addEventListener('pointerdown', () => {
+      input.attack = true;
+      input.attackPressed = true;
+    });
+    canvas.addEventListener('pointerup', () => {
+      input.attack = false;
+    });
+
+    window.addEventListener('blur', () => {
+      for (const key in input) {
+        if (typeof input[key] === 'boolean') input[key] = false;
+      }
+    });
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function rect(x, y, width, height) {
+      return { x, y, width, height };
+    }
+
+    function copyRect(r) {
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    }
+
+    function intersects(a, b) {
+      return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+      );
+    }
+
+    function centerOf(r) {
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    class SoundManager {
+      constructor() {
+        this.ctx = null;
+        this.master = null;
+        this.ambientOsc = null;
+        this.ambientGain = null;
+        this.muted = false;
+        this.mode = 'calm';
+      }
+
+      ensure() {
+        if (!this.ctx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return;
+          this.ctx = new Ctx();
+          this.master = this.ctx.createGain();
+          this.master.gain.value = 0.18;
+          this.master.connect(this.ctx.destination);
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      setMuted(flag) {
+        this.muted = flag;
+        if (this.master) {
+          this.master.gain.value = flag ? 0 : 0.18;
+        }
+        if (!flag && this.mode) {
+          this.setAmbient(this.mode);
+        }
+      }
+
+      playTone(freq, duration, type = 'sine', gain = 0.2) {
+        if (this.muted) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.value = gain;
+        g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+        osc.connect(g).connect(this.master);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+      }
+
+      play(name) {
+        switch (name) {
+          case 'attack':
+            this.playTone(520, 0.1, 'sawtooth', 0.06);
+            break;
+          case 'blade':
+            this.playTone(720, 0.18, 'square', 0.08);
+            break;
+          case 'dash':
+            this.playTone(340, 0.12, 'sine', 0.06);
+            break;
+          case 'hit':
+            this.playTone(180, 0.08, 'square', 0.05);
+            break;
+          case 'hurt':
+            this.playTone(120, 0.25, 'triangle', 0.06);
+            break;
+          case 'orb':
+            this.playTone(680, 0.18, 'triangle', 0.05);
+            break;
+          case 'skill':
+            this.playTone(440, 0.4, 'sawtooth', 0.08);
+            this.playTone(660, 0.45, 'triangle', 0.06);
+            break;
+          case 'upgrade':
+            this.playTone(520, 0.25, 'triangle', 0.06);
+            break;
+          case 'death':
+            this.playTone(90, 0.6, 'sine', 0.08);
+            break;
+          case 'bossDown':
+            this.playTone(820, 0.5, 'square', 0.09);
+            this.playTone(440, 0.5, 'triangle', 0.07);
+            break;
+          default:
+            break;
+        }
+      }
+
+      setAmbient(mode) {
+        this.mode = mode;
+        if (this.muted) return;
+        this.ensure();
+        if (!this.ctx) return;
+        const freqMap = { calm: 130, danger: 210, boss: 290, triumph: 160 };
+        const gainMap = { calm: 0.05, danger: 0.09, boss: 0.12, triumph: 0.08 };
+        const freq = freqMap[mode] || 130;
+        const gain = gainMap[mode] || 0.05;
+        if (!this.ambientOsc) {
+          this.ambientOsc = this.ctx.createOscillator();
+          this.ambientOsc.type = 'triangle';
+          this.ambientGain = this.ctx.createGain();
+          this.ambientGain.gain.value = gain;
+          this.ambientOsc.connect(this.ambientGain).connect(this.master);
+          this.ambientOsc.frequency.value = freq;
+          this.ambientOsc.start();
+        }
+        this.ambientGain.gain.setTargetAtTime(gain, this.ctx.currentTime, 1.0);
+        this.ambientOsc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.8);
+      }
+    }
+
+    const sound = new SoundManager();
+
+    const dpr = window.devicePixelRatio || 1;
+    function resizeCanvas() {
+      const displayWidth = 960 * dpr;
+      const displayHeight = 540 * dpr;
+      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const BASE_PLATFORMS = [
+      rect(-60, 520, 1080, 80),
+      rect(-60, -60, 60, 660),
+      rect(960, -60, 60, 660),
+      rect(-60, -60, 1080, 60)
+    ];
+
+    function withBoundaries(extra) {
+      return extra.concat(BASE_PLATFORMS.map(copyRect));
+    }
+
+    const ROOM_DEFS = {
+      '0,0': {
+        key: '0,0',
+        name: '崩落した玄関',
+        ambient: 'calm',
+        background: { base: '#08131f', glow: '#16283d' },
+        spawn: { x: 120, y: 420 },
+        platforms: withBoundaries([
+          rect(20, 440, 160, 20),
+          rect(260, 410, 160, 20),
+          rect(520, 470, 220, 22),
+          rect(760, 420, 160, 20),
+          rect(840, 360, 100, 18)
+        ]),
+        doors: [
+          { id: 'start_east', x: 920, y: 320, width: 40, height: 200, to: '1,0', label: '旧コンコース', spawn: { x: 120, y: 420 } }
+        ],
+        barriers: [
+          { id: 'atrium_cache_gate', x: 180, y: 420, width: 26, height: 120, requirement: 'blade', label: 'エナジーシール', breakable: true }
+        ],
+        skillCapsules: [],
+        collectibles: [
+          { id: 'cache_atrium', type: 'cache', x: 80, y: 390, width: 26, height: 26, requirement: 'blade' }
+        ],
+        enemySpawns: [
+          { id: 'start_drone', type: 'drone', x: 360, y: 400, patrol: [260, 560], amplitude: 16, speed: 1.3, hp: 26, orbs: 12 }
+        ],
+        savePoint: null,
+        hazards: []
+      },
+      '1,0': {
+        key: '1,0',
+        name: '旧コンコース',
+        ambient: 'danger',
+        background: { base: '#0a1826', glow: '#203953' },
+        spawn: { x: 140, y: 420 },
+        platforms: withBoundaries([
+          rect(120, 500, 320, 20),
+          rect(520, 460, 220, 20),
+          rect(620, 380, 220, 20),
+          rect(720, 300, 140, 18),
+          rect(200, 430, 140, 18)
+        ]),
+        doors: [
+          { id: 'concourse_west', x: -20, y: 360, width: 40, height: 200, to: '0,0', label: '玄関区画', spawn: { x: 840, y: 420 } },
+          { id: 'concourse_down', x: 760, y: 200, width: 60, height: 160, to: '1,1', requirement: 'double', lockedText: '上部の端子に届く推進力が必要', spawn: { x: 420, y: 420 } },
+          { id: 'concourse_east', x: 940, y: 280, width: 40, height: 200, to: '2,0', requirement: 'double', lockedText: '高所から跳び移ろう', spawn: { x: 120, y: 420 } }
+        ],
+        barriers: [],
+        skillCapsules: [
+          { id: 'skill_double', skill: 'double', x: 760, y: 260, width: 32, height: 32, label: '二段ジャンプモジュール', guardianId: 'concourse_guard' }
+        ],
+        collectibles: [],
+        enemySpawns: [
+          { id: 'concourse_guard', type: 'guard', x: 580, y: 440, patrol: [480, 820], hp: 140, damage: 16, orbs: 48, guardian: true }
+        ],
+        savePoint: null,
+        hazards: []
+      },
+      '2,0': {
+        key: '2,0',
+        name: '補助リレー棟',
+        ambient: 'danger',
+        background: { base: '#0a1a28', glow: '#27405d' },
+        spawn: { x: 120, y: 420 },
+        platforms: withBoundaries([
+          rect(140, 500, 320, 20),
+          rect(520, 460, 220, 20),
+          rect(520, 360, 220, 18),
+          rect(720, 300, 160, 18)
+        ]),
+        doors: [
+          { id: 'aux_west', x: -20, y: 320, width: 40, height: 200, to: '1,0', label: '旧コンコース', spawn: { x: 820, y: 320 } },
+          { id: 'aux_down', x: 780, y: 200, width: 60, height: 160, to: '2,1', requirement: 'climb', lockedText: '壁面昇降ユニットが必要', spawn: { x: 240, y: 420 } }
+        ],
+        barriers: [],
+        skillCapsules: [],
+        collectibles: [
+          { id: 'cache_aux', type: 'cache', x: 760, y: 260, width: 26, height: 26 }
+        ],
+        enemySpawns: [
+          { id: 'aux_shooter', type: 'shooter', x: 600, y: 408, facing: -1, cooldown: 150, hp: 90, damage: 16, orbs: 32 },
+          { id: 'aux_drone', type: 'drone', x: 300, y: 420, patrol: [220, 480], amplitude: 14, speed: 1.5, hp: 26, orbs: 14 }
+        ],
+        savePoint: null,
+        hazards: []
+      },
+      '0,1': {
+        key: '0,1',
+        name: '換気ダクト帯',
+        ambient: 'danger',
+        background: { base: '#081622', glow: '#1a3246' },
+        spawn: { x: 820, y: 420 },
+        platforms: withBoundaries([
+          rect(120, 500, 280, 20),
+          rect(480, 460, 200, 20),
+          rect(540, 360, 180, 20),
+          rect(300, 320, 140, 18),
+          rect(140, 400, 120, 18),
+          rect(680, 300, 140, 18)
+        ]),
+        doors: [
+          { id: 'duct_east', x: 940, y: 320, width: 40, height: 200, to: '1,1', label: 'プラザ', spawn: { x: 160, y: 420 } },
+          { id: 'duct_down', x: 200, y: 520, width: 80, height: 40, to: '0,2', spawn: { x: 420, y: 160 } }
+        ],
+        barriers: [
+          { id: 'duct_secret', x: 280, y: 440, width: 24, height: 110, requirement: 'dash', label: '補助推進で突破', autoUnlock: true }
+        ],
+        skillCapsules: [
+          { id: 'skill_climb', skill: 'climb', x: 600, y: 280, width: 30, height: 30, label: 'ウォールクライムモジュール', guardianId: 'duct_guardian' }
+        ],
+        collectibles: [
+          { id: 'cache_duct', type: 'cache', x: 220, y: 410, width: 26, height: 26, requirement: 'dash' }
+        ],
+        enemySpawns: [
+          { id: 'duct_guardian', type: 'guard', x: 520, y: 440, patrol: [420, 660], hp: 120, damage: 16, orbs: 42, guardian: true },
+          { id: 'duct_shooter', type: 'shooter', x: 260, y: 368, facing: 1, cooldown: 130, hp: 80, damage: 14, orbs: 22 }
+        ],
+        savePoint: null,
+        hazards: []
+      },
+      '1,1': {
+        key: '1,1',
+        name: '中央プラザ',
+        ambient: 'danger',
+        background: { base: '#0b1828', glow: '#213750' },
+        spawn: { x: 460, y: 420 },
+        platforms: withBoundaries([
+          rect(60, 500, 200, 20),
+          rect(360, 500, 220, 20),
+          rect(660, 500, 220, 20),
+          rect(260, 420, 140, 18),
+          rect(540, 420, 200, 18),
+          rect(640, 340, 200, 18),
+          rect(280, 320, 140, 18),
+          rect(420, 260, 120, 18)
+        ]),
+        doors: [
+          { id: 'plaza_up', x: 460, y: 200, width: 40, height: 180, to: '1,0', label: '旧コンコース', spawn: { x: 700, y: 320 } },
+          { id: 'plaza_west', x: -20, y: 360, width: 40, height: 200, to: '0,1', requirement: 'dash', lockedText: 'ダッシュで断絶を越えろ', spawn: { x: 820, y: 420 } },
+          { id: 'plaza_east', x: 940, y: 320, width: 40, height: 200, to: '2,1', requirement: 'climb', lockedText: '壁面を駆け上がれ', spawn: { x: 140, y: 420 } },
+          { id: 'plaza_core', x: 460, y: 500, width: 40, height: 80, to: '1,2', requirement: 'blade', lockedText: 'エナジーブレードで封鎖を破壊', spawn: { x: 480, y: 140 } }
+        ],
+        barriers: [
+          { id: 'plaza_seal', x: 430, y: 500, width: 100, height: 80, requirement: 'blade', label: 'エナジーシール', breakable: true }
+        ],
+        skillCapsules: [
+          { id: 'skill_dash', skill: 'dash', x: 680, y: 300, width: 32, height: 32, label: 'ダッシュモジュール', guardianId: 'plaza_guardian' }
+        ],
+        collectibles: [
+          { id: 'cache_plaza', type: 'cache', x: 240, y: 280, width: 26, height: 26, requirement: 'dash' }
+        ],
+        enemySpawns: [
+          { id: 'plaza_guardian', type: 'guard', x: 520, y: 480, patrol: [360, 760], hp: 160, damage: 18, orbs: 55, guardian: true },
+          { id: 'plaza_turret', type: 'shooter', x: 340, y: 468, facing: 1, cooldown: 150, hp: 90, damage: 14, orbs: 24 }
+        ],
+        savePoint: rect(420, 430, 60, 90),
+        hazards: []
+      },
+      '2,1': {
+        key: '2,1',
+        name: '東塔メンテナンス',
+        ambient: 'danger',
+        background: { base: '#091523', glow: '#213c58' },
+        spawn: { x: 140, y: 420 },
+        platforms: withBoundaries([
+          rect(220, 520, 240, 20),
+          rect(480, 480, 220, 20),
+          rect(520, 380, 200, 18),
+          rect(520, 260, 200, 18),
+          rect(520, 160, 200, 18),
+          rect(320, 320, 160, 18)
+        ]),
+        doors: [
+          { id: 'spire_west', x: -20, y: 320, width: 40, height: 200, to: '1,1', label: 'プラザ', spawn: { x: 820, y: 420 } },
+          { id: 'spire_up', x: 760, y: 120, width: 60, height: 160, to: '2,0', spawn: { x: 220, y: 420 } }
+        ],
+        barriers: [
+          { id: 'spire_secret', x: 860, y: 220, width: 24, height: 200, requirement: 'blade', label: '封鎖フィールド', breakable: true }
+        ],
+        skillCapsules: [
+          { id: 'skill_blade', skill: 'blade', x: 600, y: 140, width: 32, height: 32, label: 'エナジーブレードモジュール', guardianId: 'spire_guardian' }
+        ],
+        collectibles: [
+          { id: 'cache_spire', type: 'cache', x: 880, y: 200, width: 26, height: 26, requirement: 'blade' }
+        ],
+        enemySpawns: [
+          { id: 'spire_guardian', type: 'guard', x: 560, y: 460, patrol: [520, 720], hp: 190, damage: 20, orbs: 60, guardian: true },
+          { id: 'spire_turret', type: 'shooter', x: 360, y: 300, facing: 1, cooldown: 120, hp: 90, damage: 16, orbs: 26 }
+        ],
+        savePoint: null,
+        hazards: []
+      },
+      '0,2': {
+        key: '0,2',
+        name: 'サービス下層',
+        ambient: 'calm',
+        background: { base: '#09111c', glow: '#1b2a3a' },
+        spawn: { x: 420, y: 160 },
+        platforms: withBoundaries([
+          rect(80, 520, 320, 20),
+          rect(420, 480, 220, 20),
+          rect(720, 500, 200, 20),
+          rect(520, 380, 160, 18),
+          rect(220, 340, 160, 18)
+        ]),
+        doors: [
+          { id: 'service_up', x: 420, y: 520, width: 80, height: 40, to: '0,1', label: '換気ダクト帯', spawn: { x: 220, y: 420 } },
+          { id: 'service_east', x: 940, y: 360, width: 40, height: 200, to: '1,2', requirement: 'blade', lockedText: 'ブレードで隔壁を切断', spawn: { x: 160, y: 420 } }
+        ],
+        barriers: [],
+        skillCapsules: [],
+        collectibles: [
+          { id: 'cache_service', type: 'cache', x: 520, y: 340, width: 26, height: 26, requirement: 'blade' }
+        ],
+        enemySpawns: [
+          { id: 'service_guard', type: 'guard', x: 340, y: 480, patrol: [220, 580], hp: 120, damage: 16, orbs: 36 },
+          { id: 'service_drone', type: 'drone', x: 660, y: 420, patrol: [580, 820], amplitude: 16, speed: 1.2, hp: 26, orbs: 12 }
+        ],
+        savePoint: null,
+        hazards: []
+      },
+      '1,2': {
+        key: '1,2',
+        name: 'コア制御室',
+        ambient: 'boss',
+        background: { base: '#0b1324', glow: '#27345a' },
+        spawn: { x: 460, y: 420 },
+        platforms: withBoundaries([
+          rect(100, 520, 260, 20),
+          rect(540, 520, 260, 20),
+          rect(360, 440, 180, 18),
+          rect(360, 280, 180, 18),
+          rect(80, 360, 120, 18),
+          rect(700, 360, 120, 18)
+        ]),
+        doors: [
+          { id: 'core_up', x: 460, y: 80, width: 40, height: 180, to: '1,1', label: '中央プラザ', spawn: { x: 460, y: 420 } },
+          { id: 'core_secret', x: 940, y: 320, width: 40, height: 220, to: '2,2', requirement: 'boss', lockedText: 'コア制圧後に開放', spawn: { x: 120, y: 420 } }
+        ],
+        barriers: [],
+        skillCapsules: [],
+        collectibles: [],
+        enemySpawns: [
+          { id: 'core_boss', type: 'boss', x: 420, y: 340 }
+        ],
+        savePoint: rect(420, 460, 60, 70),
+        hazards: []
+      },
+      '2,2': {
+        key: '2,2',
+        name: '封印区画',
+        ambient: 'calm',
+        background: { base: '#101e2c', glow: '#2c4a63' },
+        spawn: { x: 140, y: 420 },
+        platforms: withBoundaries([
+          rect(120, 520, 320, 20),
+          rect(520, 480, 220, 18),
+          rect(680, 360, 180, 18),
+          rect(280, 340, 140, 18)
+        ]),
+        doors: [
+          { id: 'sealed_west', x: -20, y: 320, width: 40, height: 200, to: '1,2', label: 'コア制御室', spawn: { x: 820, y: 320 } }
+        ],
+        barriers: [],
+        skillCapsules: [],
+        collectibles: [
+          { id: 'cache_core', type: 'cache', x: 720, y: 320, width: 26, height: 26 }
+        ],
+        enemySpawns: [
+          { id: 'secret_drone', type: 'drone', x: 400, y: 420, patrol: [320, 520], amplitude: 18, speed: 1.4, hp: 28, orbs: 14 }
+        ],
+        savePoint: null,
+        hazards: []
+      }
+    };
+
+    const SKILL_INFO = {
+      double: { name: '二段ジャンプ', badge: skillBadges.double, hint: '旧コンコース東端の高台からプラザへ到達できる。' },
+      dash: { name: 'ダッシュ', badge: skillBadges.dash, hint: 'プラザ西側の断絶を越えて換気ダクトへ進める。' },
+      climb: { name: 'ウォールクライム', badge: skillBadges.climb, hint: 'プラザ東塔の垂直路を駆け上がれるようになった。' },
+      blade: { name: 'エナジーブレード', badge: skillBadges.blade, hint: 'プラザ下層のエナジーシールを破壊し、コアへの門が開く。' }
+    };
+
+    const ROOM_KEYS = Object.keys(ROOM_DEFS);
+    const TOTAL_ROOMS = ROOM_KEYS.length;
+    const TOTAL_CACHES = ROOM_KEYS.reduce((sum, key) => {
+      const room = ROOM_DEFS[key];
+      return sum + room.collectibles.filter(c => c.type === 'cache').length;
+    }, 0);
+
+    cacheText.textContent = `0 / ${TOTAL_CACHES}`;
+
+    const game = {
+      state: 'title',
+      currentRoomKey: '0,0',
+      roomStates: new Map(),
+      visitedRooms: new Set(),
+      orbs: 0,
+      killCount: 0,
+      caches: new Set(),
+      messageTimer: 0,
+      messageText: '',
+      highlightTimer: 0,
+      highlightText: '',
+      highlightPhase: 0,
+      startTime: 0,
+      elapsed: 0,
+      deathCount: 0,
+      timeScale: 1,
+      slowTimer: 0,
+      lostOrbs: null,
+      bossDefeated: false,
+      pendingResult: 0
+    };
+
+    const player = {
+      x: 120,
+      y: 420,
+      width: 28,
+      height: 48,
+      vx: 0,
+      vy: 0,
+      direction: 1,
+      onGround: false,
+      wallGrab: false,
+      wallDir: 0,
+      jumpCount: 0,
+      dashTimer: 0,
+      dashCooldown: 0,
+      attackCooldown: 0,
+      invulnTimer: 0,
+      maxHealth: 100,
+      health: 100,
+      attackPower: 18,
+      skillGauge: 60,
+      skillGaugeMax: 60,
+      skills: { double: false, dash: false, climb: false, blade: false },
+      upgrades: { hp: 0, attack: 0, skill: 0 }
+    };
+
+    let activeRoom = null;
+    let solids = [];
+    let enemies = [];
+    let enemyProjectiles = [];
+    let playerProjectiles = [];
+    let playerHitboxes = [];
+    let orbDrops = [];
+
+    let lastTime = 0;
+    let accumulator = 0;
+
+    function getRoomState(key) {
+      if (!game.roomStates.has(key)) {
+        game.roomStates.set(key, {
+          openBarriers: new Set(),
+          collectedCapsules: new Set(),
+          collectedCollectibles: new Set(),
+          clearedEnemies: new Set()
+        });
+      }
+      return game.roomStates.get(key);
+    }
+
+    function playerHasRequirement(req) {
+      if (!req) return true;
+      switch (req) {
+        case 'double':
+          return player.skills.double;
+        case 'dash':
+          return player.skills.dash;
+        case 'climb':
+          return player.skills.climb;
+        case 'blade':
+          return player.skills.blade;
+        case 'boss':
+          return game.bossDefeated;
+        default:
+          return true;
+      }
+    }
+
+    function computeSolids(room, state) {
+      const list = room.platforms.map(copyRect);
+      if (room.barriers) {
+        room.barriers.forEach(bar => {
+          if (state.openBarriers.has(bar.id)) return;
+          if (bar.autoUnlock && playerHasRequirement(bar.requirement)) {
+            state.openBarriers.add(bar.id);
+            return;
+          }
+          list.push(rect(bar.x, bar.y, bar.width, bar.height));
+        });
+      }
+      return list;
+    }
+
+    function showMessage(text, duration = 3) {
+      game.messageText = text;
+      game.messageTimer = duration;
+      messageBox.textContent = text;
+      messageBox.classList.add('show');
+    }
+
+    function clearMessage() {
+      game.messageTimer = 0;
+      game.messageText = '';
+      messageBox.classList.remove('show');
+    }
+
+    function updateHud() {
+      hpBar.style.width = `${(player.health / player.maxHealth) * 100}%`;
+      hpText.textContent = `${Math.round(player.health)} / ${player.maxHealth}`;
+      skillBar.style.width = `${(player.skillGauge / player.skillGaugeMax) * 100}%`;
+      skillText.textContent = `${Math.round(player.skillGauge)} / ${player.skillGaugeMax}`;
+      orbText.textContent = Math.floor(game.orbs);
+      const exploreRate = Math.floor((game.visitedRooms.size / TOTAL_ROOMS) * 100);
+      exploreText.textContent = `${exploreRate}%`;
+      killText.textContent = game.killCount;
+      cacheText.textContent = `${game.caches.size} / ${TOTAL_CACHES}`;
+      for (const key of Object.keys(SKILL_INFO)) {
+        const badge = SKILL_INFO[key].badge;
+        if (badge) {
+          badge.classList.toggle('active', !!player.skills[key]);
+        }
+      }
+    }
+
+    function updateAmbience() {
+      if (!activeRoom) return;
+      let mode = activeRoom.ambient || 'calm';
+      if (mode !== 'boss') {
+        const danger = enemies.some(e => !e.isPassive);
+        if (danger) mode = mode === 'boss' ? 'boss' : 'danger';
+        else if (mode !== 'calm') mode = activeRoom.ambient;
+      }
+      if (game.slowTimer > 0) {
+        sound.setAmbient('triumph');
+      } else {
+        sound.setAmbient(mode);
+      }
+    }
+
+    function resetPlayerStats() {
+      player.x = 120;
+      player.y = 420;
+      player.vx = 0;
+      player.vy = 0;
+      player.direction = 1;
+      player.onGround = false;
+      player.wallGrab = false;
+      player.wallDir = 0;
+      player.jumpCount = 0;
+      player.dashTimer = 0;
+      player.dashCooldown = 0;
+      player.attackCooldown = 0;
+      player.invulnTimer = 0;
+      player.health = player.maxHealth;
+      player.skillGauge = Math.min(player.skillGauge, player.skillGaugeMax);
+    }
+
+    function grantSkill(skill) {
+      if (!player.skills[skill]) {
+        player.skills[skill] = true;
+        const info = SKILL_INFO[skill];
+        sound.play('skill');
+        if (info) {
+          showMessage(`${info.name}を獲得！`);
+          game.highlightText = info.hint;
+          game.highlightTimer = 5;
+        }
+        updateHud();
+      }
+    }
+
+    function addOrbs(amount) {
+      game.orbs += amount;
+      sound.play('orb');
+      updateHud();
+    }
+
+    function spendOrbs(amount) {
+      if (game.orbs >= amount) {
+        game.orbs -= amount;
+        updateHud();
+        return true;
+      }
+      return false;
+    }
+
+    function recordKill() {
+      game.killCount += 1;
+      updateHud();
+    }
+
+    function collectCache(id) {
+      if (!game.caches.has(id)) {
+        game.caches.add(id);
+        updateHud();
+      }
+    }
+
+    function enterRoom(key, spawnPoint) {
+      const room = ROOM_DEFS[key];
+      if (!room) return;
+      activeRoom = room;
+      game.currentRoomKey = key;
+      const state = getRoomState(key);
+      solids = computeSolids(room, state);
+      const spawn = spawnPoint || room.spawn;
+      player.x = spawn.x;
+      player.y = spawn.y;
+      player.vx = 0;
+      player.vy = 0;
+      player.onGround = false;
+      player.wallGrab = false;
+      player.jumpCount = 0;
+      enemies = [];
+      enemyProjectiles = [];
+      playerProjectiles = [];
+      playerHitboxes = [];
+      orbDrops = [];
+      room.enemySpawns.forEach(spawnInfo => {
+        if (state.clearedEnemies.has(spawnInfo.id)) return;
+        const enemy = createEnemy(spawnInfo);
+        if (enemy) enemies.push(enemy);
+      });
+      if (game.lostOrbs && game.lostOrbs.room === key) {
+        orbDrops.push({ x: game.lostOrbs.x, y: game.lostOrbs.y, amount: game.lostOrbs.amount, vx: 0, vy: 0, lost: true });
+      }
+      game.visitedRooms.add(key);
+      updateAmbience();
+      updateHud();
+    }
+
+    function resetGame() {
+      game.state = 'playing';
+      game.currentRoomKey = '0,0';
+      game.roomStates.clear();
+      game.visitedRooms.clear();
+      game.orbs = 0;
+      game.killCount = 0;
+      game.caches.clear();
+      game.deathCount = 0;
+      game.lostOrbs = null;
+      game.bossDefeated = false;
+      game.pendingResult = 0;
+      game.checkpoint = { room: '0,0', spawn: { x: ROOM_DEFS['0,0'].spawn.x, y: ROOM_DEFS['0,0'].spawn.y } };
+      game.startTime = performance.now();
+      game.elapsed = 0;
+      player.maxHealth = 100;
+      player.health = 100;
+      player.attackPower = 18;
+      player.skillGaugeMax = 60;
+      player.skillGauge = 60;
+      player.skills.double = false;
+      player.skills.dash = false;
+      player.skills.climb = false;
+      player.skills.blade = false;
+      player.upgrades = { hp: 0, attack: 0, skill: 0 };
+      for (const key of Object.keys(SKILL_INFO)) {
+        const badge = SKILL_INFO[key].badge;
+        if (badge) badge.classList.remove('active');
+      }
+      resetPlayerStats();
+      enterRoom('0,0');
+    }
+
+    function pauseGame() {
+      if (game.state !== 'playing') return;
+      game.state = 'paused';
+      pauseOverlay.classList.add('active');
+    }
+
+    function resumeGame() {
+      if (game.state !== 'paused') return;
+      game.state = 'playing';
+      pauseOverlay.classList.remove('active');
+    }
+
+    function openUpgradeTerminal() {
+      if (game.state !== 'playing') return;
+      game.state = 'upgrade';
+      upgradeOverlay.classList.add('active');
+      refreshUpgradeCosts();
+    }
+
+    function closeUpgradeTerminal() {
+      if (game.state !== 'upgrade') return;
+      upgradeOverlay.classList.remove('active');
+      game.state = 'playing';
+    }
+
+    function formatTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSec / 60);
+      const seconds = totalSec % 60;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function openResultScreen() {
+      resultExplore.textContent = exploreText.textContent;
+      resultKills.textContent = game.killCount;
+      resultCaches.textContent = `${game.caches.size} / ${TOTAL_CACHES}`;
+      resultTime.textContent = formatTime(game.elapsed);
+      resultDeaths.textContent = game.deathCount;
+      resultOverlay.classList.add('active');
+      game.state = 'result';
+      sound.setAmbient('triumph');
+    }
+
+    function showHighlight(text) {
+      game.highlightText = text;
+      game.highlightTimer = 5;
+      game.highlightPhase = 0;
+    }
+
+    function refreshUpgradeCosts() {
+      const hpCost = 30 + player.upgrades.hp * 12;
+      const atkCost = 35 + player.upgrades.attack * 14;
+      const skillCost = 25 + player.upgrades.skill * 10;
+      hpCostLabel.textContent = `${hpCost} オーブ`;
+      atkCostLabel.textContent = `${atkCost} オーブ`;
+      skillCostLabel.textContent = `${skillCost} オーブ`;
+      hpUpgradeBtn.dataset.cost = hpCost;
+      atkUpgradeBtn.dataset.cost = atkCost;
+      skillUpgradeBtn.dataset.cost = skillCost;
+    }
+
+    function applyUpgrade(type) {
+      const cost = Number(type.dataset.cost || 0);
+      if (!spendOrbs(cost)) {
+        showMessage('オーブが足りない');
+        return;
+      }
+      switch (type) {
+        case hpUpgradeBtn:
+          player.upgrades.hp += 1;
+          player.maxHealth += 25;
+          player.health = player.maxHealth;
+          break;
+        case atkUpgradeBtn:
+          player.upgrades.attack += 1;
+          player.attackPower += 3;
+          break;
+        case skillUpgradeBtn:
+          player.upgrades.skill += 1;
+          player.skillGaugeMax += 18;
+          player.skillGauge = player.skillGaugeMax;
+          break;
+      }
+      sound.play('upgrade');
+      refreshUpgradeCosts();
+      updateHud();
+    }
+
+    function dropLostOrbs(amount) {
+      if (!amount) return;
+      game.lostOrbs = { room: game.currentRoomKey, x: player.x + player.width / 2, y: player.y, amount, active: true };
+    }
+
+    function collectLostOrbs(drop) {
+      if (drop.lost) {
+        addOrbs(drop.amount);
+        if (game.lostOrbs) game.lostOrbs = null;
+      }
+    }
+
+    function playerTakeDamage(amount, knockbackX = 0) {
+      if (player.invulnTimer > 0) return;
+      player.health -= amount;
+      player.invulnTimer = 1;
+      player.vx += knockbackX;
+      player.vy = -5;
+      sound.play('hurt');
+      if (player.health <= 0) {
+        handlePlayerDeath();
+      }
+      updateHud();
+    }
+
+    function handlePlayerDeath() {
+      game.deathCount += 1;
+      dropLostOrbs(game.orbs);
+      game.orbs = 0;
+      sound.play('death');
+      resetPlayerStats();
+      enemies = [];
+      enemyProjectiles = [];
+      playerProjectiles = [];
+      playerHitboxes = [];
+      orbDrops = [];
+      const checkpoint = game.checkpoint || { room: '0,0', spawn: ROOM_DEFS['0,0'].spawn };
+      enterRoom(checkpoint.room, { x: checkpoint.spawn.x, y: checkpoint.spawn.y });
+      showMessage('コア端末で再構築…');
+    }
+
+    function clampEntityToBounds(entity) {
+      if (entity.x < -40) entity.x = -40;
+      if (entity.x + entity.width > 960) entity.x = 960 - entity.width;
+      if (entity.y + entity.height > 600) {
+        entity.y = 600 - entity.height;
+        entity.vy = 0;
+      }
+    }
+
+    function createEnemy(spawn) {
+      switch (spawn.type) {
+        case 'drone':
+          return createDrone(spawn);
+        case 'shooter':
+          return createShooter(spawn);
+        case 'guard':
+          return createGuard(spawn);
+        case 'boss':
+          return createBoss(spawn);
+        default:
+          return null;
+      }
+    }
+
+    // Enemy constructors will be defined below
+
+    function startGame() {
+      resetGame();
+      titleOverlay.classList.remove('active');
+      sound.setAmbient('calm');
+    }
+
+    startBtn.addEventListener('click', () => {
+      sound.ensure();
+      sound.setMuted(false);
+      startGame();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      if (game.state === 'playing') pauseGame();
+      else if (game.state === 'paused') resumeGame();
+    });
+
+    muteBtn.addEventListener('click', () => {
+      sound.setMuted(!sound.muted);
+    });
+
+    muteBtnTitle.addEventListener('click', () => {
+      sound.setMuted(!sound.muted);
+    });
+
+    resumeBtn.addEventListener('click', () => resumeGame());
+    restartBtn.addEventListener('click', () => {
+      pauseOverlay.classList.remove('active');
+      resetGame();
+    });
+    upgradeCloseBtn.addEventListener('click', closeUpgradeTerminal);
+    hpUpgradeBtn.addEventListener('click', () => applyUpgrade(hpUpgradeBtn));
+    atkUpgradeBtn.addEventListener('click', () => applyUpgrade(atkUpgradeBtn));
+    skillUpgradeBtn.addEventListener('click', () => applyUpgrade(skillUpgradeBtn));
+    resultRestartBtn.addEventListener('click', () => {
+      resultOverlay.classList.remove('active');
+      resetGame();
+    });
+    resultMenuBtn.addEventListener('click', () => {
+      resultOverlay.classList.remove('active');
+      titleOverlay.classList.add('active');
+      game.state = 'title';
+    });
+
+    // --- Mechanics constants and helpers ---
+    const MOVE_ACCEL_GROUND = 900;
+    const MOVE_ACCEL_AIR = 520;
+    const MAX_RUN_SPEED = 240;
+    const GRAVITY = 2200;
+    const MAX_FALL_SPEED = 960;
+    const JUMP_VELOCITY = -630;
+    const DOUBLE_JUMP_VELOCITY = -600;
+    const WALL_JUMP_VELOCITY_X = 480;
+    const WALL_JUMP_VELOCITY_Y = -640;
+    const WALL_SLIDE_SPEED = 160;
+    const DASH_SPEED = 760;
+    const DASH_DURATION = 0.22;
+    const DASH_COOLDOWN = 0.55;
+    const DASH_COST = 18;
+    const BLADE_COST = 22;
+    const BLADE_SPEED = 620;
+    const SKILL_REGEN = 26;
+
+    function resolveEntity(entity, dt) {
+      entity.onGround = false;
+      entity.touchLeft = false;
+      entity.touchRight = false;
+
+      entity.x += entity.vx * dt;
+      for (const solid of solids) {
+        if (intersects(entity, solid)) {
+          if (entity.vx > 0) {
+            entity.x = solid.x - entity.width;
+            entity.touchRight = true;
+          } else if (entity.vx < 0) {
+            entity.x = solid.x + solid.width;
+            entity.touchLeft = true;
+          }
+          entity.vx = 0;
+        }
+      }
+
+      entity.y += entity.vy * dt;
+      for (const solid of solids) {
+        if (intersects(entity, solid)) {
+          if (entity.vy > 0) {
+            entity.y = solid.y - entity.height;
+            entity.onGround = true;
+          } else if (entity.vy < 0) {
+            entity.y = solid.y + solid.height;
+          }
+          entity.vy = 0;
+        }
+      }
+      clampEntityToBounds(entity);
+    }
+
+    function spawnOrbs(total, x, y, lost = false) {
+      if (!total) return;
+      const parts = Math.max(1, Math.round(total / 15));
+      let remaining = Math.round(total);
+      for (let i = 0; i < parts; i += 1) {
+        const amount = i === parts - 1 ? remaining : Math.max(1, Math.round(total / parts));
+        remaining -= amount;
+        orbDrops.push({
+          x,
+          y,
+          vx: rand(-120, 120),
+          vy: rand(-240, -140),
+          width: 12,
+          height: 12,
+          amount,
+          lost
+        });
+      }
+    }
+
+    function defeatEnemy(enemy) {
+      const state = getRoomState(game.currentRoomKey);
+      if (enemy.id) state.clearedEnemies.add(enemy.id);
+      spawnOrbs(enemy.orbs || 20, enemy.x + enemy.width / 2, enemy.y, false);
+      recordKill();
+      enemies = enemies.filter(e => e !== enemy);
+    }
+
+    // Enemy constructors and behaviour definitions
+    function createDrone(spawn) {
+      const drone = {
+        id: spawn.id,
+        type: 'drone',
+        x: spawn.x,
+        y: spawn.y,
+        baseY: spawn.y,
+        width: 28,
+        height: 24,
+        dir: spawn.dir || 1,
+        patrol: spawn.patrol || [spawn.x - 140, spawn.x + 140],
+        amplitude: spawn.amplitude || 16,
+        speed: (spawn.speed || 140),
+        hp: spawn.hp || 30,
+        maxHp: spawn.hp || 30,
+        damage: spawn.damage || 12,
+        orbs: spawn.orbs || 12,
+        phase: 0,
+        isPassive: false,
+        update(dt, scale) {
+          this.phase += dt * scale * 2.6;
+          this.x += this.dir * this.speed * dt * scale;
+          if (this.x < this.patrol[0]) {
+            this.x = this.patrol[0];
+            this.dir = 1;
+          }
+          if (this.x > this.patrol[1]) {
+            this.x = this.patrol[1];
+            this.dir = -1;
+          }
+          this.y = this.baseY + Math.sin(this.phase) * this.amplitude;
+          if (intersects(this, player)) {
+            playerTakeDamage(this.damage, this.dir * 160);
+          }
+        },
+        takeDamage(amount) {
+          this.hp -= amount;
+          sound.play('hit');
+          if (this.hp <= 0) {
+            defeatEnemy(this);
+          }
+        }
+      };
+      return drone;
+    }
+
+    function createShooter(spawn) {
+      const cooldown = (spawn.cooldown || 150) / 60;
+      const shooter = {
+        id: spawn.id,
+        type: 'shooter',
+        x: spawn.x,
+        y: spawn.y,
+        width: 36,
+        height: 40,
+        hp: spawn.hp || 90,
+        maxHp: spawn.hp || 90,
+        damage: spawn.damage || 14,
+        orbs: spawn.orbs || 24,
+        cooldown,
+        timer: cooldown * Math.random(),
+        facing: spawn.facing || 1,
+        isPassive: false,
+        update(dt, scale) {
+          this.timer -= dt * scale;
+          const px = player.x + player.width / 2;
+          this.facing = px < this.x ? -1 : 1;
+          if (this.timer <= 0) {
+            this.timer = this.cooldown;
+            this.fire();
+          }
+          if (intersects(this, player)) {
+            playerTakeDamage(this.damage, this.facing * 120);
+          }
+        },
+        fire() {
+          const originX = this.x + this.width / 2;
+          const originY = this.y + 12;
+          const tx = player.x + player.width / 2;
+          const ty = player.y + player.height / 2;
+          const angle = Math.atan2(ty - originY, tx - originX);
+          const speed = 320;
+          enemyProjectiles.push({
+            x: originX - 6,
+            y: originY - 6,
+            width: 12,
+            height: 12,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            damage: this.damage,
+            time: 4
+          });
+        },
+        takeDamage(amount) {
+          this.hp -= amount;
+          sound.play('hit');
+          if (this.hp <= 0) {
+            defeatEnemy(this);
+          }
+        }
+      };
+      return shooter;
+    }
+
+    function createGuard(spawn) {
+      const guard = {
+        id: spawn.id,
+        type: 'guard',
+        x: spawn.x,
+        y: spawn.y,
+        width: 34,
+        height: 52,
+        vx: 0,
+        vy: 0,
+        dir: spawn.dir || -1,
+        patrol: spawn.patrol || [spawn.x - 180, spawn.x + 180],
+        speed: spawn.speed || 260,
+        hp: spawn.hp || 160,
+        maxHp: spawn.hp || 160,
+        damage: spawn.damage || 18,
+        orbs: spawn.orbs || 48,
+        guardian: !!spawn.guardian,
+        isPassive: false,
+        update(dt, scale) {
+          const accel = this.onGround ? 700 : 420;
+          this.vx += this.dir * accel * dt * scale;
+          this.vx = clamp(this.vx, -this.speed, this.speed);
+          this.vy += GRAVITY * dt * scale;
+          if (this.vy > MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
+          resolveEntity(this, dt * scale);
+          if (this.x < this.patrol[0]) {
+            this.x = this.patrol[0];
+            this.dir = 1;
+          }
+          if (this.x + this.width > this.patrol[1]) {
+            this.x = this.patrol[1] - this.width;
+            this.dir = -1;
+          }
+          if (this.onGround && Math.random() < 0.01) {
+            this.vy = -420;
+          }
+          if (intersects(this, player)) {
+            playerTakeDamage(this.damage, this.dir * 220);
+          }
+        },
+        takeDamage(amount) {
+          this.hp -= amount;
+          sound.play('hit');
+          if (this.hp <= 0) {
+            defeatEnemy(this);
+          }
+        }
+      };
+      return guard;
+    }
+
+    function createBoss(spawn) {
+      const boss = {
+        id: spawn.id,
+        type: 'boss',
+        x: spawn.x,
+        y: spawn.y,
+        width: 84,
+        height: 84,
+        vx: 0,
+        vy: 0,
+        dir: 1,
+        hp: 540,
+        maxHp: 540,
+        shieldHealth: 140,
+        shieldActive: true,
+        shieldTimer: 0,
+        damage: 26,
+        orbs: 120,
+        attackTimer: 2.8,
+        isPassive: false,
+        update(dt, scale) {
+          this.attackTimer -= dt * scale;
+          this.vy += GRAVITY * dt * scale * 0.6;
+          if (this.vy > MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
+          resolveEntity(this, dt * scale);
+          const leftBound = 200;
+          const rightBound = 720 - this.width;
+          if (this.x < leftBound) {
+            this.x = leftBound;
+            this.dir = 1;
+          }
+          if (this.x > rightBound) {
+            this.x = rightBound;
+            this.dir = -1;
+          }
+          if (this.attackTimer <= 0) {
+            if (this.shieldActive) {
+              this.fireBurst();
+              this.attackTimer = 3.6;
+            } else {
+              this.dashStrike();
+              this.attackTimer = 2.4;
+            }
+          }
+          if (!this.shieldActive) {
+            this.shieldTimer -= dt * scale;
+            if (this.shieldTimer <= 0) {
+              this.shieldActive = true;
+              this.shieldHealth = 140;
+              showMessage('シールドが再展開した…', 2);
+            }
+          }
+          if (intersects(this, player)) {
+            playerTakeDamage(this.damage, this.dir * 260);
+          }
+        },
+        fireBurst() {
+          const originX = this.x + this.width / 2;
+          const originY = this.y + this.height / 2;
+          const patterns = 6;
+          for (let i = 0; i < patterns; i += 1) {
+            const angle = -0.5 + (i / (patterns - 1)) * 1.0;
+            const vx = Math.cos(angle) * 360;
+            const vy = Math.sin(angle) * 360;
+            enemyProjectiles.push({
+              x: originX - 8,
+              y: originY - 8,
+              width: 16,
+              height: 16,
+              vx,
+              vy,
+              damage: 24,
+              time: 3
+            });
+          }
+        },
+        dashStrike() {
+          this.vx = this.dir * 520;
+          this.vy = -360;
+          this.dir *= -1;
+        },
+        takeDamage(amount, source) {
+          if (this.shieldActive) {
+            if (source === 'blade') {
+              this.shieldHealth -= amount;
+              sound.play('hit');
+              if (this.shieldHealth <= 0) {
+                this.shieldActive = false;
+                this.shieldTimer = 8;
+                showMessage('シールドを破壊！', 2.4);
+              }
+            } else {
+              this.hp -= amount * 0.1;
+            }
+          } else {
+            this.hp -= amount;
+          }
+          if (this.hp <= 0) {
+            defeatEnemy(this);
+            handleBossDefeat(this);
+          }
+        }
+      };
+      return boss;
+    }
+
+    function handleBossDefeat(boss) {
+      if (game.bossDefeated) return;
+      sound.play('bossDown');
+      game.bossDefeated = true;
+      game.slowTimer = 2.6;
+      game.timeScale = 0.35;
+      showHighlight('都市コアが制圧された。');
+      if (!game.pendingResult) game.pendingResult = 3.2;
+    }
+
+    function handlePlayerMovement(dt) {
+      const move = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+      if (player.dashTimer > 0) {
+        player.vx = player.direction * DASH_SPEED;
+        player.vy = 0;
+      } else {
+        const accel = player.onGround ? MOVE_ACCEL_GROUND : MOVE_ACCEL_AIR;
+        if (move !== 0) {
+          player.vx += move * accel * dt;
+          player.direction = move > 0 ? 1 : -1;
+        } else {
+          const friction = (player.onGround ? MOVE_ACCEL_GROUND : MOVE_ACCEL_AIR * 0.4) * dt;
+          if (Math.abs(player.vx) <= friction) player.vx = 0;
+          else player.vx -= Math.sign(player.vx) * friction;
+        }
+        player.vx = clamp(player.vx, -MAX_RUN_SPEED, MAX_RUN_SPEED);
+      }
+
+      if (!player.onGround && !player.wallGrab) {
+        player.vy += GRAVITY * dt;
+        if (player.vy > MAX_FALL_SPEED) player.vy = MAX_FALL_SPEED;
+      }
+
+      if (input.jumpPressed) {
+        if (player.onGround) {
+          player.vy = JUMP_VELOCITY;
+          player.onGround = false;
+          player.jumpCount = 1;
+        } else if (player.wallGrab) {
+          player.vy = WALL_JUMP_VELOCITY_Y;
+          player.vx = -player.wallDir * WALL_JUMP_VELOCITY_X;
+          player.wallGrab = false;
+          player.jumpCount = 1;
+        } else if (player.skills.double && player.jumpCount < 2) {
+          player.vy = DOUBLE_JUMP_VELOCITY;
+          player.jumpCount = 2;
+        }
+      }
+
+      if (input.dashPressed && player.skills.dash && player.dashCooldown <= 0 && player.skillGauge >= DASH_COST) {
+        const dir = input.right ? 1 : input.left ? -1 : player.direction;
+        if (dir !== 0) {
+          player.direction = dir;
+          player.dashTimer = DASH_DURATION;
+          player.dashCooldown = DASH_COOLDOWN;
+          player.vx = dir * DASH_SPEED;
+          player.vy = 0;
+          player.skillGauge = Math.max(0, player.skillGauge - DASH_COST);
+          player.invulnTimer = Math.max(player.invulnTimer, 0.3);
+          sound.play('dash');
+        }
+      }
+    }
+
+    function performAttack() {
+      if (player.attackCooldown > 0) return;
+      player.attackCooldown = player.skills.blade ? 0.28 : 0.32;
+      const slashWidth = player.skills.blade ? 56 : 42;
+      const slashHeight = 32;
+      const slashX = player.direction > 0 ? player.x + player.width : player.x - slashWidth;
+      const slash = {
+        x: slashX,
+        y: player.y + 10,
+        width: slashWidth,
+        height: slashHeight,
+        damage: player.attackPower,
+        time: 0.18,
+        type: player.skills.blade ? 'bladeSlash' : 'slash',
+        hitSet: new Set()
+      };
+      playerHitboxes.push(slash);
+      sound.play('attack');
+      if (player.skills.blade && player.skillGauge >= BLADE_COST) {
+        player.skillGauge = Math.max(0, player.skillGauge - BLADE_COST);
+        playerProjectiles.push({
+          type: 'blade',
+          x: player.direction > 0 ? player.x + player.width + 6 : player.x - 34,
+          y: player.y + 16,
+          width: 34,
+          height: 18,
+          vx: player.direction * BLADE_SPEED,
+          vy: 0,
+          damage: player.attackPower + 6,
+          time: 0.8
+        });
+        sound.play('blade');
+      }
+    }
+
+    function updatePlayerAttacks(dt) {
+      for (let i = playerHitboxes.length - 1; i >= 0; i -= 1) {
+        const hit = playerHitboxes[i];
+        hit.time -= dt;
+        if (hit.time <= 0) {
+          playerHitboxes.splice(i, 1);
+          continue;
+        }
+        for (const enemy of enemies) {
+          if (hit.hitSet.has(enemy.id)) continue;
+          if (intersects(hit, enemy)) {
+            hit.hitSet.add(enemy.id);
+            enemy.takeDamage(hit.damage, hit.type === 'bladeSlash' ? 'blade' : 'melee');
+          }
+        }
+      }
+    }
+
+    function updateProjectiles(dt) {
+      for (let i = playerProjectiles.length - 1; i >= 0; i -= 1) {
+        const proj = playerProjectiles[i];
+        proj.time -= dt;
+        proj.x += proj.vx * dt;
+        proj.y += (proj.vy || 0) * dt;
+        let remove = proj.time <= 0;
+        if (!remove) {
+          for (const solid of solids) {
+            if (intersects(proj, solid)) {
+              remove = true;
+              break;
+            }
+          }
+        }
+        if (!remove) {
+          for (const enemy of enemies) {
+            if (intersects(proj, enemy)) {
+              enemy.takeDamage(proj.damage, proj.type);
+              remove = true;
+              break;
+            }
+          }
+        }
+        if (remove) {
+          playerProjectiles.splice(i, 1);
+        }
+      }
+    }
+
+    function updateEnemyProjectiles(dt) {
+      for (let i = enemyProjectiles.length - 1; i >= 0; i -= 1) {
+        const proj = enemyProjectiles[i];
+        proj.time -= dt;
+        proj.x += proj.vx * dt;
+        proj.y += proj.vy * dt;
+        let remove = proj.time <= 0;
+        if (!remove) {
+          for (const solid of solids) {
+            if (intersects(proj, solid)) {
+              remove = true;
+              break;
+            }
+          }
+        }
+        if (!remove && intersects(proj, player)) {
+          playerTakeDamage(proj.damage, Math.sign(proj.vx) * 140);
+          remove = true;
+        }
+        if (remove) {
+          enemyProjectiles.splice(i, 1);
+        }
+      }
+    }
+
+    function updateOrbs(dt) {
+      for (let i = orbDrops.length - 1; i >= 0; i -= 1) {
+        const orb = orbDrops[i];
+        orb.vy += GRAVITY * dt * 0.6;
+        orb.vx *= 0.96;
+        orb.vy *= 0.96;
+        const dx = player.x + player.width / 2 - orb.x;
+        const dy = player.y + player.height / 2 - orb.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 180) {
+          const pull = (180 - dist) * 4 * dt;
+          orb.vx += (dx / Math.max(dist, 1)) * pull;
+          orb.vy += (dy / Math.max(dist, 1)) * pull;
+        }
+        orb.x += orb.vx * dt;
+        orb.y += orb.vy * dt;
+        const orbRect = { x: orb.x - 6, y: orb.y - 6, width: 12, height: 12 };
+        if (intersects(orbRect, player)) {
+          if (orb.lost) {
+            collectLostOrbs(orb);
+          } else {
+            addOrbs(orb.amount);
+          }
+          orbDrops.splice(i, 1);
+        }
+      }
+    }
+
+    function checkBarriers() {
+      if (!activeRoom || !activeRoom.barriers) return;
+      const state = getRoomState(game.currentRoomKey);
+      let changed = false;
+      for (const barrier of activeRoom.barriers) {
+        if (state.openBarriers.has(barrier.id)) continue;
+        if (barrier.autoUnlock && playerHasRequirement(barrier.requirement)) {
+          state.openBarriers.add(barrier.id);
+          changed = true;
+          continue;
+        }
+        if (barrier.requirement === 'blade' && player.skills.blade) {
+          const area = rect(barrier.x, barrier.y, barrier.width, barrier.height);
+          let broken = false;
+          for (const hit of playerHitboxes) {
+            if (intersects(hit, area)) {
+              broken = true;
+              break;
+            }
+          }
+          if (!broken) {
+            for (const proj of playerProjectiles) {
+              if (proj.type === 'blade' && intersects(proj, area)) {
+                broken = true;
+                break;
+              }
+            }
+          }
+          if (broken) {
+            state.openBarriers.add(barrier.id);
+            changed = true;
+            showMessage('封鎖を破壊した！', 1.6);
+          }
+        }
+      }
+      if (changed) {
+        solids = computeSolids(activeRoom, state);
+      }
+    }
+
+    function checkInteractions(dt) {
+      if (!activeRoom) return;
+      const state = getRoomState(game.currentRoomKey);
+
+      if (activeRoom.savePoint) {
+        const sp = activeRoom.savePoint;
+        const area = typeof sp.width === 'number' ? sp : rect(sp.x, sp.y, sp.width, sp.height);
+        if (intersects(player, area)) {
+          if (input.interactPressed) {
+            game.checkpoint = { room: game.currentRoomKey, spawn: { x: player.x, y: player.y - 6 } };
+            showMessage('再構築ポイント更新', 1.4);
+            openUpgradeTerminal();
+          } else if (game.messageTimer <= 0) {
+            showMessage('↑で端末アクセス', 1.0);
+          }
+        }
+      }
+
+      if (activeRoom.skillCapsules) {
+        for (const capsule of activeRoom.skillCapsules) {
+          if (state.collectedCapsules.has(capsule.id)) continue;
+          if (capsule.guardianId && !state.clearedEnemies.has(capsule.guardianId)) continue;
+          const area = rect(capsule.x, capsule.y, capsule.width, capsule.height);
+          if (intersects(player, area)) {
+            state.collectedCapsules.add(capsule.id);
+            grantSkill(capsule.skill);
+          }
+        }
+      }
+
+      if (activeRoom.collectibles) {
+        for (const item of activeRoom.collectibles) {
+          if (state.collectedCollectibles.has(item.id)) continue;
+          if (item.requirement && !playerHasRequirement(item.requirement)) continue;
+          const area = rect(item.x, item.y, item.width, item.height);
+          if (intersects(player, area)) {
+            state.collectedCollectibles.add(item.id);
+            if (item.type === 'cache') {
+              collectCache(item.id);
+              showMessage('データキャッシュを回収', 1.4);
+            } else {
+              addOrbs(item.value || 25);
+            }
+          }
+        }
+      }
+
+      for (const door of activeRoom.doors) {
+        const area = rect(door.x, door.y, door.width, door.height);
+        if (intersects(player, area)) {
+          if (!playerHasRequirement(door.requirement)) {
+            if (door.lockedText && game.messageTimer <= 0) {
+              showMessage(door.lockedText, 1.5);
+            }
+            continue;
+          }
+          const targetSpawn = door.spawn ? { x: door.spawn.x, y: door.spawn.y } : { x: ROOM_DEFS[door.to].spawn.x, y: ROOM_DEFS[door.to].spawn.y };
+          enterRoom(door.to, targetSpawn);
+          return;
+        }
+      }
+    }
+
+    function updateGame(dt) {
+      if (!activeRoom) return;
+      const isPlaying = game.state === 'playing';
+      const scaledDt = dt * (isPlaying ? game.timeScale : 1);
+
+      if (isPlaying) {
+        game.elapsed = performance.now() - game.startTime;
+      }
+
+      if (game.pendingResult > 0 && isPlaying) {
+        game.pendingResult -= dt;
+        if (game.pendingResult <= 0) {
+          openResultScreen();
+          return;
+        }
+      }
+
+      if (game.slowTimer > 0 && isPlaying) {
+        game.slowTimer -= dt;
+        if (game.slowTimer <= 0) {
+          game.timeScale = 1;
+          game.slowTimer = 0;
+        }
+      }
+
+      if (game.messageTimer > 0) {
+        game.messageTimer -= scaledDt;
+        if (game.messageTimer <= 0) clearMessage();
+      }
+      if (game.highlightTimer > 0) {
+        game.highlightTimer -= scaledDt;
+        game.highlightPhase += scaledDt;
+        if (game.highlightTimer <= 0) {
+          game.highlightText = '';
+        }
+      }
+
+      if (!isPlaying) {
+        resetPressedFlags();
+        return;
+      }
+
+      player.skillGauge = clamp(player.skillGauge + SKILL_REGEN * scaledDt, 0, player.skillGaugeMax);
+      if (player.invulnTimer > 0) player.invulnTimer = Math.max(0, player.invulnTimer - scaledDt);
+      if (player.attackCooldown > 0) player.attackCooldown = Math.max(0, player.attackCooldown - scaledDt);
+      if (player.dashCooldown > 0) player.dashCooldown = Math.max(0, player.dashCooldown - scaledDt);
+      if (player.dashTimer > 0) player.dashTimer = Math.max(0, player.dashTimer - scaledDt);
+
+      handlePlayerMovement(scaledDt);
+      resolveEntity(player, scaledDt);
+      if (player.onGround) {
+        player.jumpCount = 0;
+        player.wallGrab = false;
+      } else if (player.skills.climb && ((player.touchLeft && input.left) || (player.touchRight && input.right))) {
+        player.wallGrab = true;
+        player.wallDir = player.touchLeft ? -1 : 1;
+        if (player.vy > WALL_SLIDE_SPEED) player.vy = WALL_SLIDE_SPEED;
+        if (input.up) player.vy = -360;
+      } else {
+        player.wallGrab = false;
+      }
+
+      if ((input.attackPressed || (input.attack && player.attackCooldown <= 0))) {
+        performAttack();
+      }
+
+      updatePlayerAttacks(scaledDt);
+      updateProjectiles(scaledDt);
+      updateEnemyProjectiles(scaledDt);
+      updateOrbs(scaledDt);
+      checkBarriers();
+      for (let i = enemies.length - 1; i >= 0; i -= 1) {
+        enemies[i].update(dt, game.timeScale);
+      }
+      checkInteractions(scaledDt);
+      updateAmbience();
+      updateHud();
+      resetPressedFlags();
+    }
+
+    function drawGame() {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const room = activeRoom;
+      const bg = room ? room.background : { base: '#0d1320', glow: '#1b2738' };
+      const gradient = ctx.createLinearGradient(0, 0, 0, 540);
+      gradient.addColorStop(0, bg.glow);
+      gradient.addColorStop(1, bg.base);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 960, 540);
+
+      if (room) {
+        drawRoomGeometry(room);
+      }
+
+      drawOrbsVisual();
+      drawProjectilesVisual();
+      drawEnemies();
+      drawPlayer();
+      drawHighlightText();
+      drawMinimap();
+    }
+
+    function drawRoomGeometry(room) {
+      const state = getRoomState(game.currentRoomKey);
+      ctx.fillStyle = 'rgba(30,48,72,0.8)';
+      for (const platform of room.platforms) {
+        if (platform.x < -40 || platform.y < -40) continue;
+        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+      }
+
+      if (room.barriers) {
+        for (const barrier of room.barriers) {
+          if (state.openBarriers.has(barrier.id)) continue;
+          const grad = ctx.createLinearGradient(barrier.x, barrier.y, barrier.x + barrier.width, barrier.y + barrier.height);
+          grad.addColorStop(0, 'rgba(110,200,255,0.8)');
+          grad.addColorStop(1, 'rgba(110,200,255,0.2)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(barrier.x, barrier.y, barrier.width, barrier.height);
+        }
+      }
+
+      if (room.doors) {
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        for (const door of room.doors) {
+          ctx.fillRect(door.x, door.y, door.width, door.height);
+        }
+      }
+
+      if (room.savePoint) {
+        const sp = room.savePoint;
+        const area = typeof sp.width === 'number' ? sp : rect(sp.x, sp.y, sp.width, sp.height);
+        const grad = ctx.createLinearGradient(area.x, area.y, area.x, area.y + area.height);
+        grad.addColorStop(0, 'rgba(120,220,255,0.6)');
+        grad.addColorStop(1, 'rgba(80,160,220,0.1)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(area.x, area.y, area.width, area.height);
+      }
+
+      if (room.skillCapsules) {
+        for (const capsule of room.skillCapsules) {
+          if (state.collectedCapsules.has(capsule.id)) continue;
+          if (capsule.guardianId && !state.clearedEnemies.has(capsule.guardianId)) continue;
+          ctx.fillStyle = 'rgba(110,210,255,0.85)';
+          ctx.beginPath();
+          ctx.arc(capsule.x + capsule.width / 2, capsule.y + capsule.height / 2, capsule.width / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      if (room.collectibles) {
+        for (const item of room.collectibles) {
+          if (state.collectedCollectibles.has(item.id)) continue;
+          ctx.fillStyle = item.type === 'cache' ? 'rgba(255,220,120,0.9)' : 'rgba(140,255,160,0.9)';
+          ctx.fillRect(item.x, item.y, item.width, item.height);
+        }
+      }
+    }
+
+    function drawPlayer() {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.fillStyle = player.invulnTimer > 0 ? 'rgba(255,200,220,0.8)' : 'rgba(120,220,255,0.85)';
+      ctx.fillRect(0, 0, player.width, player.height);
+      ctx.fillStyle = 'rgba(20,30,40,0.6)';
+      ctx.fillRect(player.direction > 0 ? player.width - 8 : 0, 12, 8, 12);
+      ctx.restore();
+    }
+
+    function drawEnemies() {
+      for (const enemy of enemies) {
+        ctx.save();
+        ctx.translate(enemy.x, enemy.y);
+        let color = 'rgba(255,150,140,0.9)';
+        if (enemy.type === 'drone') color = 'rgba(140,200,255,0.85)';
+        if (enemy.type === 'shooter') color = 'rgba(255,170,110,0.85)';
+        if (enemy.type === 'boss') color = 'rgba(200,140,255,0.85)';
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, enemy.width, enemy.height);
+        if (enemy.type === 'boss') {
+          const boss = enemy;
+          if (boss.shieldActive) {
+            ctx.strokeStyle = 'rgba(120,220,255,0.7)';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(-4, -4, enemy.width + 8, enemy.height + 8);
+          }
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawProjectilesVisual() {
+      ctx.fillStyle = 'rgba(120,230,255,0.8)';
+      for (const proj of playerProjectiles) {
+        ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
+      }
+      ctx.fillStyle = 'rgba(255,130,130,0.8)';
+      for (const proj of enemyProjectiles) {
+        ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
+      }
+    }
+
+    function drawOrbsVisual() {
+      for (const orb of orbDrops) {
+        ctx.fillStyle = orb.lost ? 'rgba(255,200,120,0.9)' : 'rgba(140,255,200,0.9)';
+        ctx.beginPath();
+        ctx.arc(orb.x, orb.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawHighlightText() {
+      if (!game.highlightText) return;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = '16px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(game.highlightText, 480, 70);
+    }
+
+    function drawMinimap() {
+      const width = 132;
+      const height = 90;
+      const cellW = width / 3;
+      const cellH = height / 3;
+      const offsetX = 960 - width - 20;
+      const offsetY = 20;
+      ctx.fillStyle = 'rgba(10,16,24,0.7)';
+      ctx.fillRect(offsetX, offsetY, width, height);
+      for (const key of ROOM_KEYS) {
+        const [rx, ry] = key.split(',').map(Number);
+        const x = offsetX + rx * cellW;
+        const y = offsetY + ry * cellH;
+        const visited = game.visitedRooms.has(key);
+        ctx.fillStyle = visited ? 'rgba(110,200,255,0.6)' : 'rgba(255,255,255,0.08)';
+        ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+        if (game.currentRoomKey === key) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 2, y + 2, cellW - 4, cellH - 4);
+        }
+      }
+    }
+
+    const STEP = 1 / 60;
+    function loop(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      let delta = (timestamp - lastTime) / 1000;
+      if (delta > 0.08) delta = 0.08;
+      accumulator += delta;
+      while (accumulator >= STEP) {
+        updateGame(STEP);
+        accumulator -= STEP;
+      }
+      drawGame();
+      lastTime = timestamp;
+      requestAnimationFrame(loop);
+    }
+
+    updateHud();
+    drawGame();
+    requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>

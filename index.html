@@ -162,6 +162,13 @@
             <button id="menuRunnerBtn" type="button">ハイパーラン</button>
           </div>
         </article>
+        <article class="menu-card">
+          <h2>エコーズ・オブ・シティ</h2>
+          <p>廃墟化した未来都市を探索するメトロイドヴァニア。スキルを解放して行動範囲を広げ、エナジーオーブで強化しながらコア制御AIに挑もう。</p>
+          <div class="menu-actions">
+            <button id="menuEchoesBtn" type="button">探索を開始</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
@@ -174,6 +181,7 @@
     const bladeBtn = document.getElementById('menuBladeBtn');
     const towerBtn = document.getElementById('menuTowerBtn');
     const runnerBtn = document.getElementById('menuRunnerBtn');
+    const echoesBtn = document.getElementById('menuEchoesBtn');
 
     function getContinueData() {
       try {
@@ -234,6 +242,12 @@
     if (runnerBtn) {
       runnerBtn.addEventListener('click', () => {
         window.location.href = 'metrorunner.html';
+      });
+    }
+
+    if (echoesBtn) {
+      echoesBtn.addEventListener('click', () => {
+        window.location.href = 'echoes.html';
       });
     }
 
