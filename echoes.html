@@ -167,6 +167,7 @@
       max-width: 70%;
       text-align: center;
       box-shadow: 0 16px 36px rgba(0,0,0,0.4);
+      z-index: 8;
     }
     .message.show { opacity: 1; }
     .overlay {
@@ -210,6 +211,98 @@
       gap: 0.75rem;
     }
     .panel-footer button { flex: 1; min-width: 160px; }
+    .touch-controls {
+      position: absolute;
+      inset: 0;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: clamp(0.8rem, 4vw, 1.6rem);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 6;
+      gap: clamp(1rem, 6vw, 2.4rem);
+    }
+    .touch-controls.visible {
+      display: flex;
+    }
+    .touch-controls.visible.controls-enabled {
+      opacity: 1;
+    }
+    .touch-controls .touch-panel {
+      display: flex;
+      pointer-events: none;
+    }
+    .touch-controls .touch-panel.left {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: clamp(0.4rem, 2.4vw, 0.8rem);
+    }
+    .touch-controls .touch-panel.right {
+      flex-direction: column;
+      align-items: flex-end;
+      gap: clamp(0.4rem, 2.4vw, 0.8rem);
+    }
+    .touch-move {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(0.35rem, 2vw, 0.6rem);
+      pointer-events: none;
+    }
+    .touch-move-row {
+      display: flex;
+      gap: clamp(0.35rem, 2vw, 0.6rem);
+      pointer-events: none;
+    }
+    .touch-controls button {
+      font: inherit;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(112,215,255,0.4);
+      background: rgba(112,215,255,0.22);
+      color: var(--text);
+      min-width: clamp(58px, 16vw, 88px);
+      min-height: clamp(58px, 16vw, 88px);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 14px 32px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+      letter-spacing: 0.05em;
+      font-size: clamp(0.95rem, 3.4vw, 1.2rem);
+      pointer-events: auto;
+      touch-action: none;
+      transition: transform 0.12s ease, box-shadow 0.2s ease;
+    }
+    .touch-controls button.small {
+      min-width: clamp(52px, 14vw, 74px);
+      min-height: clamp(52px, 14vw, 74px);
+      font-size: clamp(0.85rem, 3vw, 1.05rem);
+    }
+    .touch-controls button.action {
+      min-width: clamp(68px, 18vw, 108px);
+      min-height: clamp(68px, 18vw, 108px);
+    }
+    .touch-controls button.primary {
+      background: rgba(112,215,255,0.32);
+      border-color: rgba(112,215,255,0.55);
+      box-shadow: 0 18px 38px rgba(112,215,255,0.25);
+    }
+    .touch-controls button.attack {
+      border-radius: 1.1rem;
+      font-size: clamp(1.1rem, 4vw, 1.6rem);
+    }
+    .touch-controls button:focus {
+      outline: none;
+    }
+    .touch-controls button:focus-visible {
+      outline: 2px solid rgba(112,215,255,0.6);
+      outline-offset: 2px;
+    }
+    .touch-controls button.active {
+      transform: scale(0.94);
+      box-shadow: 0 0 0 4px rgba(112,215,255,0.45);
+    }
     .upgrade-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -299,6 +392,25 @@
       </div>
     </div>
     <div class="message" id="messageBox"></div>
+    <div class="touch-controls" id="touchControls" aria-hidden="true">
+      <div class="touch-panel left">
+        <div class="touch-move">
+          <button type="button" class="small" data-action="up" aria-label="上方向へインタラクト">↑</button>
+          <div class="touch-move-row">
+            <button type="button" data-action="left" aria-label="左へ移動">←</button>
+            <button type="button" data-action="right" aria-label="右へ移動">→</button>
+          </div>
+          <button type="button" class="small" data-action="down" aria-label="しゃがむ">↓</button>
+        </div>
+      </div>
+      <div class="touch-panel right">
+        <button type="button" class="action attack" data-action="attack" aria-label="攻撃">⚔</button>
+        <div class="touch-move-row">
+          <button type="button" class="action primary" data-action="jump" aria-label="ジャンプ">ジャンプ</button>
+          <button type="button" class="action" data-action="dash" aria-label="ダッシュ">ダッシュ</button>
+        </div>
+      </div>
+    </div>
     <div class="overlay active" id="titleOverlay">
       <div class="panel">
         <h1>エコーズ・オブ・シティ</h1>
@@ -310,6 +422,7 @@
           <li>スペース: ジャンプ (スキル獲得で二段ジャンプ)</li>
           <li>Ctrl または タップ: 攻撃</li>
           <li>Shift: ダッシュ (スキル獲得後)</li>
+          <li>スマホ: 画面左下の矢印と右下のボタンで移動・ジャンプ・ダッシュ・攻撃が可能です。</li>
         </ul>
         <p>セーブ端末でエナジーオーブを消費して強化が可能。死亡するとオーブはその場に残ります。都市の謎を解き明かし、コア防衛AIを打ち倒しましょう。</p>
         <div class="panel-footer">
@@ -410,6 +523,8 @@
     const pauseOverlay = document.getElementById('pauseOverlay');
     const upgradeOverlay = document.getElementById('upgradeOverlay');
     const resultOverlay = document.getElementById('resultOverlay');
+    const touchControls = document.getElementById('touchControls');
+    const touchButtons = touchControls ? Array.from(touchControls.querySelectorAll('button[data-action]')) : [];
 
     const startBtn = document.getElementById('startBtn');
     const muteBtn = document.getElementById('muteBtn');
@@ -473,6 +588,71 @@
       interactPressed: false
     };
 
+    const activeTouchPointers = new Map();
+    const activeActionCounts = new Map();
+
+    function pressAction(action) {
+      if (!action) return;
+      if (input[action]) {
+        if (action === 'jump') input.jumpPressed = false;
+        if (action === 'attack') input.attackPressed = false;
+        if (action === 'dash') input.dashPressed = false;
+        if (action === 'up') input.interactPressed = false;
+      }
+      input[action] = true;
+      if (action === 'jump') input.jumpPressed = true;
+      if (action === 'attack') input.attackPressed = true;
+      if (action === 'dash') input.dashPressed = true;
+      if (action === 'up') input.interactPressed = true;
+    }
+
+    function releaseAction(action) {
+      if (!action) return;
+      input[action] = false;
+    }
+
+    function clearTouchInputs() {
+      if (activeTouchPointers.size) {
+        for (const [pointerId, info] of activeTouchPointers.entries()) {
+          if (info.element) {
+            info.element.classList.remove('active');
+            try { info.element.releasePointerCapture(pointerId); } catch (err) {}
+          }
+        }
+        activeTouchPointers.clear();
+      }
+      if (activeActionCounts.size) {
+        for (const action of activeActionCounts.keys()) {
+          releaseAction(action);
+        }
+        activeActionCounts.clear();
+      }
+    }
+
+    function beginTouchAction(action, pointerId, element) {
+      if (!action) return;
+      const count = activeActionCounts.get(action) || 0;
+      if (count === 0) pressAction(action);
+      activeActionCounts.set(action, count + 1);
+      activeTouchPointers.set(pointerId, { action, element });
+      if (element) element.classList.add('active');
+    }
+
+    function endTouchAction(pointerId) {
+      const info = activeTouchPointers.get(pointerId);
+      if (!info) return;
+      const { action, element } = info;
+      const count = activeActionCounts.get(action) || 0;
+      if (count <= 1) {
+        activeActionCounts.delete(action);
+        releaseAction(action);
+      } else {
+        activeActionCounts.set(action, count - 1);
+      }
+      if (element) element.classList.remove('active');
+      activeTouchPointers.delete(pointerId);
+    }
+
     function resetPressedFlags() {
       input.jumpPressed = false;
       input.attackPressed = false;
@@ -492,40 +672,33 @@
         return;
       }
       if (!action) return;
-      if ([ 'left', 'right', 'up', 'down', 'jump', 'attack', 'dash' ].includes(action)) {
+      if (['left', 'right', 'up', 'down', 'jump', 'attack', 'dash'].includes(action)) {
         e.preventDefault();
       }
-      if (input[action]) {
-        if (action === 'jump') input.jumpPressed = false;
-        if (action === 'attack') input.attackPressed = false;
-        if (action === 'dash') input.dashPressed = false;
-        if (action === 'up') input.interactPressed = false;
-      }
-      input[action] = true;
-      if (action === 'jump') input.jumpPressed = true;
-      if (action === 'attack') input.attackPressed = true;
-      if (action === 'dash') input.dashPressed = true;
-      if (action === 'up') input.interactPressed = true;
+      pressAction(action);
     }
 
     function handleKeyUp(e) {
       const action = KEY_BINDINGS[e.code];
       if (!action) return;
-      input[action] = false;
+      releaseAction(action);
     }
 
     document.addEventListener('keydown', handleKeyDown, { passive: false });
     document.addEventListener('keyup', handleKeyUp, { passive: false });
 
     canvas.addEventListener('pointerdown', () => {
-      input.attack = true;
-      input.attackPressed = true;
+      pressAction('attack');
     });
     canvas.addEventListener('pointerup', () => {
-      input.attack = false;
+      releaseAction('attack');
+    });
+    canvas.addEventListener('pointercancel', () => {
+      releaseAction('attack');
     });
 
     window.addEventListener('blur', () => {
+      clearTouchInputs();
       for (const key in input) {
         if (typeof input[key] === 'boolean') input[key] = false;
       }
@@ -1018,6 +1191,63 @@
       pendingResult: 0
     };
 
+    function refreshTouchControlsState() {
+      if (!touchControls) return;
+      const visible = touchControls.classList.contains('visible');
+      const enabled = visible && game.state === 'playing';
+      if (!enabled) {
+        clearTouchInputs();
+      }
+      touchControls.classList.toggle('controls-enabled', enabled);
+      touchControls.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+    }
+
+    function setupTouchControls() {
+      if (!touchControls || touchButtons.length === 0) return;
+      const coarseQuery = window.matchMedia('(pointer: coarse)');
+
+      const updateVisibility = () => {
+        const shouldShow = coarseQuery.matches || window.innerWidth < 900;
+        touchControls.classList.toggle('visible', shouldShow);
+        refreshTouchControlsState();
+      };
+
+      updateVisibility();
+      if (typeof coarseQuery.addEventListener === 'function') {
+        coarseQuery.addEventListener('change', updateVisibility);
+      } else if (typeof coarseQuery.addListener === 'function') {
+        coarseQuery.addListener(updateVisibility);
+      }
+      window.addEventListener('resize', updateVisibility);
+
+      touchButtons.forEach((btn) => {
+        const action = btn.dataset.action;
+        if (!action) return;
+        btn.addEventListener('pointerdown', (event) => {
+          if (!touchControls.classList.contains('controls-enabled')) return;
+          event.preventDefault();
+          event.stopPropagation();
+          beginTouchAction(action, event.pointerId, btn);
+          try { btn.setPointerCapture(event.pointerId); } catch (err) {}
+        });
+        const finish = (event) => {
+          const info = activeTouchPointers.get(event.pointerId);
+          if (!info || info.element !== btn) return;
+          event.preventDefault();
+          event.stopPropagation();
+          endTouchAction(event.pointerId);
+          try { btn.releasePointerCapture(event.pointerId); } catch (err) {}
+        };
+        btn.addEventListener('pointerup', finish);
+        btn.addEventListener('pointercancel', finish);
+        btn.addEventListener('lostpointercapture', (event) => {
+          const info = activeTouchPointers.get(event.pointerId);
+          if (!info || info.element !== btn) return;
+          endTouchAction(event.pointerId);
+        });
+      });
+    }
+
     const player = {
       x: 120,
       y: 420,
@@ -1268,18 +1498,21 @@
       }
       resetPlayerStats();
       enterRoom('0,0');
+      refreshTouchControlsState();
     }
 
     function pauseGame() {
       if (game.state !== 'playing') return;
       game.state = 'paused';
       pauseOverlay.classList.add('active');
+      refreshTouchControlsState();
     }
 
     function resumeGame() {
       if (game.state !== 'paused') return;
       game.state = 'playing';
       pauseOverlay.classList.remove('active');
+      refreshTouchControlsState();
     }
 
     function openUpgradeTerminal() {
@@ -1287,12 +1520,14 @@
       game.state = 'upgrade';
       upgradeOverlay.classList.add('active');
       refreshUpgradeCosts();
+      refreshTouchControlsState();
     }
 
     function closeUpgradeTerminal() {
       if (game.state !== 'upgrade') return;
       upgradeOverlay.classList.remove('active');
       game.state = 'playing';
+      refreshTouchControlsState();
     }
 
     function formatTime(ms) {
@@ -1311,6 +1546,7 @@
       resultOverlay.classList.add('active');
       game.state = 'result';
       sound.setAmbient('triumph');
+      refreshTouchControlsState();
     }
 
     function showHighlight(text) {
@@ -1467,7 +1703,11 @@
       resultOverlay.classList.remove('active');
       titleOverlay.classList.add('active');
       game.state = 'title';
+      refreshTouchControlsState();
     });
+
+    setupTouchControls();
+    refreshTouchControlsState();
 
     // --- Mechanics constants and helpers ---
     const MOVE_ACCEL_GROUND = 900;
