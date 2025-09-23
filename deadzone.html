@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>デッドゾーン：サバイバル</title>
   <style>
     :root {
@@ -42,7 +43,12 @@
     }
     .app-shell {
       position: relative;
-      width: min(1180px, 100%);
+      width: 100%;
+      max-width: 1180px;
+      --frame-max-width: 1180px;
+      --frame-horizontal-gap: var(--page-padding);
+      --frame-vertical-gap: var(--page-padding);
+      --frame-min-width: 280px;
       aspect-ratio: 16 / 9;
       background: rgba(6, 10, 18, 0.92);
       border-radius: clamp(0.8rem, 1.6vw, 1.4rem);
@@ -394,12 +400,15 @@
       to { opacity: 1; transform: translateY(0); }
     }
     @media (max-width: 720px) {
-      body { padding: 0; }
+      body {
+        padding: 0;
+        align-items: stretch;
+        justify-content: flex-start;
+      }
       .app-shell {
+        --frame-horizontal-gap: 0px;
+        --frame-vertical-gap: 0px;
         border-radius: 0;
-        width: 100vw;
-        height: 100vh;
-        aspect-ratio: auto;
       }
       .hud-layer {
         padding: 1rem;
@@ -410,8 +419,8 @@
     }
   </style>
 </head>
-<body>
-  <div class="app-shell" id="appShell">
+<body class="mobile-full-bleed">
+  <div class="app-shell responsive-frame responsive-frame--wide" id="appShell">
     <canvas id="gameCanvas" width="1280" height="720" aria-label="ゲーム画面"></canvas>
     <div class="hud-layer" aria-live="polite">
       <div class="hud-top">

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>弾幕サーファー</title>
   <style>
     :root {
@@ -143,7 +144,13 @@
     }
     .shooter-canvas-shell {
       position: relative;
-      width: min(90vw, 520px);
+      width: 100%;
+      max-width: 520px;
+      --frame-max-width: 520px;
+      --frame-aspect: 0.5625;
+      --frame-horizontal-gap: 1rem;
+      --frame-vertical-gap: calc(1rem + 7.5rem);
+      --frame-min-width: 260px;
       aspect-ratio: 9 / 16;
       background: rgba(12,18,28,0.78);
       border-radius: 1rem;
@@ -220,7 +227,7 @@
       opacity: 1;
       transform: translate(-50%, -0.25rem);
     }
-    @media (max-width: 768px) {
+    @media (max-width: 768px), (max-height: 720px) {
       .shooter-topbar {
         flex-direction: column;
         align-items: stretch;
@@ -233,7 +240,9 @@
         width: 100%;
       }
       .shooter-canvas-shell {
-        width: min(100%, 420px);
+        max-width: min(420px, 100%);
+        --frame-horizontal-gap: 0.75rem;
+        --frame-vertical-gap: calc(0.75rem + 6.5rem);
       }
     }
   </style>
@@ -267,7 +276,7 @@
       </div>
     </div>
     <div class="shooter-main">
-      <div class="shooter-canvas-shell" id="shooterCanvasShell">
+      <div class="shooter-canvas-shell responsive-frame responsive-frame--tall" id="shooterCanvasShell">
         <canvas id="shooterCanvas" aria-label="弾幕サーファー"></canvas>
         <div class="shooter-overlay" id="shooterStartOverlay" role="dialog" aria-modal="true">
           <div class="shooter-panel">

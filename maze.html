@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>一筆書き迷路</title>
   <style>
     :root {
@@ -102,7 +103,12 @@
     }
     .canvas-shell {
       position: relative;
-      width: min(90vw, 720px);
+      width: 100%;
+      max-width: 720px;
+      --frame-max-width: 720px;
+      --frame-aspect: 1;
+      --frame-horizontal-gap: 1rem;
+      --frame-vertical-gap: calc(1rem + 9rem);
       aspect-ratio: 1 / 1;
       background: rgba(12,18,28,0.75);
       border-radius: 1rem;
@@ -263,7 +269,11 @@
         justify-content: center;
       }
       header .stats { width: 100%; }
-      .canvas-shell { width: min(100%, 520px); }
+      .canvas-shell {
+        max-width: min(100%, 520px);
+        --frame-horizontal-gap: 0.75rem;
+        --frame-vertical-gap: calc(0.75rem + 8rem);
+      }
     }
   </style>
 </head>
@@ -294,7 +304,7 @@
     </div>
   </header>
   <main>
-    <div class="canvas-shell" id="canvasShell">
+    <div class="canvas-shell responsive-frame responsive-frame--square" id="canvasShell">
       <canvas id="mazeCanvas" aria-label="一筆書き迷路"></canvas>
       <div class="overlay" id="homeOverlay" role="dialog" aria-modal="true">
         <h1>一筆書き迷路</h1>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>ぶっ飛ばし剣士</title>
   <style>
     :root {
@@ -151,7 +152,12 @@
     }
     .blade-canvas-shell {
       position: relative;
-      width: min(960px, 95vw);
+      width: 100%;
+      max-width: 960px;
+      --frame-max-width: 960px;
+      --frame-horizontal-gap: clamp(1rem, 4vw, 2.5rem);
+      --frame-vertical-gap: calc(clamp(1rem, 4vw, 2.5rem) + 8.5rem);
+      --frame-min-width: 280px;
       aspect-ratio: 16 / 9;
       background: rgba(12, 18, 28, 0.82);
       border-radius: 1.2rem;
@@ -291,6 +297,9 @@
       .blade-hud { justify-content: center; }
       .hud-item { min-width: 45%; }
       .blade-life { justify-content: center; }
+      .blade-canvas-shell {
+        --frame-vertical-gap: calc(clamp(1rem, 4vw, 2.5rem) + 7rem);
+      }
     }
     @media (max-width: 600px) {
       .blade-stage {
@@ -300,6 +309,8 @@
       .blade-canvas-shell {
         width: 100%;
         max-width: 520px;
+        --frame-horizontal-gap: 1rem;
+        --frame-vertical-gap: 1rem;
         aspect-ratio: auto;
         background: none;
         border-radius: 0;
@@ -382,7 +393,7 @@
       <button id="bladeMute" class="blade-mute" type="button" title="ミュート切替" aria-label="ミュート切替" aria-pressed="false">🔊</button>
     </header>
     <main class="blade-stage">
-      <div class="blade-canvas-shell">
+      <div class="blade-canvas-shell responsive-frame responsive-frame--wide">
         <canvas id="bladeCanvas" width="960" height="540" aria-label="ぶっ飛ばし剣士のゲーム画面"></canvas>
         <div class="blade-overlay" id="bladeTitle" role="dialog" aria-modal="true">
           <h1>ぶっ飛ばし剣士</h1>

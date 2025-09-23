@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>スワップ・モンスターズ</title>
   <style>
     :root {
@@ -39,7 +40,8 @@
       padding-left: calc(clamp(1rem, 3vw, 2rem) + var(--safe-left));
       padding-right: calc(clamp(1rem, 3vw, 2rem) + var(--safe-right));
       gap: clamp(1rem, 2.5vw, 1.75rem);
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
     header {
       display: grid;
@@ -120,7 +122,9 @@
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
     }
     .board {
-      width: min(88vw, 640px);
+      width: 100%;
+      max-width: 640px;
+      max-height: max(280px, calc(var(--viewport-height, 100dvh) - clamp(10rem, 26vw, 18rem)));
       aspect-ratio: 1 / 1;
       display: grid;
       grid-template-columns: repeat(var(--size), 1fr);
@@ -398,13 +402,17 @@
       40% { transform: scale(1.08); }
       100% { transform: scale(1); }
     }
-    @media (max-width: 1024px) {
+    @media (max-width: 1080px) {
       main {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto;
+        align-items: stretch;
       }
-      .board {
-        width: min(94vw, 520px);
+      .board-shell {
+        justify-content: center;
+      }
+      .side-panel {
+        order: -1;
       }
     }
     @media (max-width: 640px) {

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="styles/responsive.css" />
   <title>フロア99</title>
   <style>
     :root {
@@ -181,7 +182,12 @@
     }
     .tower-stage {
       position: relative;
-      width: min(520px, 94vw);
+      width: 100%;
+      max-width: 520px;
+      --frame-max-width: 520px;
+      --frame-aspect: 0.6666667;
+      --frame-horizontal-gap: clamp(1rem, 4vw, 2.5rem);
+      --frame-vertical-gap: calc(clamp(1rem, 4vw, 2.5rem) + 8rem);
       aspect-ratio: 2 / 3;
       background: rgba(12,18,28,0.82);
       border-radius: 1.4rem;
@@ -296,7 +302,11 @@
       }
       .hud-left { justify-content: center; }
       .hud-right { justify-content: center; }
-      .tower-stage { width: min(92vw, 480px); }
+      .tower-stage {
+        max-width: min(92vw, 480px);
+        --frame-horizontal-gap: clamp(1rem, 4vw, 2.5rem);
+        --frame-vertical-gap: calc(clamp(1rem, 4vw, 2.5rem) + 7rem);
+      }
     }
   </style>
 </head>
@@ -331,7 +341,7 @@
       </div>
     </header>
     <main class="tower-main">
-      <div class="tower-stage">
+      <div class="tower-stage responsive-frame responsive-frame--tower">
         <canvas id="towerCanvas" width="480" height="720" aria-label="ゲーム画面"></canvas>
         <div class="tower-overlay" id="startOverlay">
           <h1>フロア99</h1>
