@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>メトロランナー：リミックス</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Segoe UI', 'Hiragino Sans', system-ui, sans-serif;
+      --bg: radial-gradient(circle at top, rgba(64,92,140,0.22), rgba(14,18,28,1) 70%);
+      --panel: rgba(12,16,24,0.78);
+      --panel-border: rgba(255,255,255,0.1);
+      --accent: #6cf5ff;
+      --accent-soft: rgba(102,204,255,0.18);
+      --text: #f5f7fa;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(1rem, 3vw, 2rem);
+    }
+    .app {
+      position: relative;
+      width: min(1100px, 100%);
+      aspect-ratio: 16 / 9;
+      background: rgba(6,10,18,0.9);
+      border-radius: 1.2rem;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #05070c;
+    }
+    .hud {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      padding: 1.2rem;
+      gap: 1rem;
+    }
+    .hud-row {
+      display: flex;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+    }
+    .hud-card {
+      background: rgba(12,18,28,0.72);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 0.75rem;
+      padding: 0.55rem 0.9rem;
+      min-width: 120px;
+      pointer-events: auto;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+    }
+    .hud-card strong {
+      display: block;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+    .hud-card span {
+      display: block;
+      font-size: 0.7rem;
+      opacity: 0.7;
+      letter-spacing: 0.06em;
+    }
+    .hud-right {
+      margin-left: auto;
+      display: flex;
+      gap: 0.6rem;
+      align-items: stretch;
+    }
+    .skill-bar {
+      position: relative;
+      width: clamp(180px, 22vw, 260px);
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .skill-bar-fill {
+      position: absolute;
+      inset: 0;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(92,200,255,0.95), rgba(180,80,255,0.9));
+      transition: width 0.15s ease;
+    }
+    .skill-bar-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+    }
+    .hud-badges {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+    .shield-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.6);
+      background: rgba(135,220,255,0.6);
+      box-shadow: 0 0 6px rgba(110,200,255,0.6);
+    }
+    .shield-dot.empty {
+      background: transparent;
+      border-color: rgba(255,255,255,0.2);
+      box-shadow: none;
+      opacity: 0.4;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(6,10,18,0.82);
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: clamp(1.5rem, 4vw, 2.4rem);
+    }
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .panel {
+      width: min(640px, 100%);
+      background: rgba(12,18,30,0.92);
+      border-radius: 1.1rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: clamp(1.5rem, 4vw, 2.8rem);
+      box-shadow: 0 25px 70px rgba(0,0,0,0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: 0.04em;
+    }
+    p {
+      margin: 0;
+      line-height: 1.7;
+      color: rgba(245,247,250,0.82);
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    button {
+      font: inherit;
+      border-radius: 0.65rem;
+      padding: 0.65rem 1.2rem;
+      border: 1px solid rgba(102,204,255,0.45);
+      background: linear-gradient(135deg, rgba(120,200,255,0.22), rgba(120,200,255,0.04));
+      color: var(--text);
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover {
+      background: linear-gradient(135deg, rgba(120,200,255,0.35), rgba(120,200,255,0.08));
+      box-shadow: 0 12px 24px rgba(120,200,255,0.18);
+    }
+    button:active {
+      transform: translateY(2px) scale(0.99);
+    }
+    button.subtle {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.1);
+    }
+    button.subtle:hover {
+      background: rgba(255,255,255,0.12);
+    }
+    .mode-buttons button {
+      flex: 1;
+      min-width: 120px;
+    }
+    .difficulty-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      padding: 0.3rem 0.7rem;
+      background: rgba(102,204,255,0.18);
+      border-radius: 999px;
+    }
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .list-item {
+      background: rgba(14,20,32,0.8);
+      border-radius: 0.8rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .list-item strong {
+      letter-spacing: 0.06em;
+    }
+    .list-item small {
+      opacity: 0.65;
+      letter-spacing: 0.08em;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.8rem;
+    }
+    .result-card {
+      background: rgba(14,20,32,0.82);
+      border-radius: 0.9rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 0.8rem 1rem;
+    }
+    .result-card span {
+      display: block;
+      font-size: 0.7rem;
+      opacity: 0.7;
+      letter-spacing: 0.08em;
+    }
+    .result-card strong {
+      display: block;
+      font-size: 1.3rem;
+      margin-top: 0.35rem;
+      letter-spacing: 0.06em;
+    }
+    .upgrade-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.9rem;
+    }
+    .upgrade-card {
+      padding: 0.9rem 1rem;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(14,22,34,0.88);
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+    .upgrade-card footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .upgrade-card footer button {
+      flex: 1;
+      font-size: 0.8rem;
+      padding: 0.55rem 0.8rem;
+    }
+    .upgrade-card footer span {
+      font-size: 0.8rem;
+      opacity: 0.75;
+      letter-spacing: 0.08em;
+    }
+    .toast {
+      position: absolute;
+      left: 50%;
+      top: 12%;
+      transform: translate(-50%, -20px);
+      background: rgba(20,32,46,0.88);
+      border-radius: 0.8rem;
+      border: 1px solid rgba(120,200,255,0.4);
+      padding: 0.6rem 1rem;
+      box-shadow: 0 16px 38px rgba(0,0,0,0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .badge-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .badge {
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(110,200,255,0.16);
+      border: 1px solid rgba(110,200,255,0.3);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+    }
+    .muted {
+      opacity: 0.55;
+    }
+    @media (max-width: 720px) {
+      .panel {
+        padding: 1.6rem 1.2rem;
+        border-radius: 1rem;
+      }
+      .hud {
+        padding: 0.9rem;
+      }
+      .hud-card {
+        min-width: 100px;
+        padding: 0.45rem 0.7rem;
+      }
+      button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <canvas id="gameCanvas" width="1280" height="720" aria-label="ゲーム画面"></canvas>
+    <div class="hud" aria-hidden="true">
+      <div class="hud-row">
+        <div class="hud-card">
+          <span>距離</span>
+          <strong id="hudDistance">0m</strong>
+        </div>
+        <div class="hud-card">
+          <span>スコア</span>
+          <strong id="hudScore">0</strong>
+        </div>
+        <div class="hud-card">
+          <span>コンボ</span>
+          <strong id="hudCombo">x1.0</strong>
+        </div>
+        <div class="hud-card">
+          <span>コイン</span>
+          <strong id="hudCoins">0</strong>
+        </div>
+      </div>
+      <div class="hud-row">
+        <div class="hud-card">
+          <span>スキル</span>
+          <strong id="hudSkillName">--</strong>
+        </div>
+        <div class="skill-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="skill-bar-fill" id="hudSkillFill"></div>
+          <div class="skill-bar-label" id="hudSkillLabel">0%</div>
+        </div>
+        <div class="hud-card hud-badges">
+          <span>シールド</span>
+          <div class="hud-badges" id="hudShield"></div>
+        </div>
+        <div class="hud-right">
+          <button id="btnMute" class="subtle" type="button">🔈 MUTE</button>
+        </div>
+      </div>
+    </div>
+
+    <section id="titleScreen" class="overlay active" aria-live="polite">
+      <div class="panel">
+        <div>
+          <h1>メトロランナー：リミックス</h1>
+          <p>地下鉄を疾走するエンドレス・アクションランナー。ジャンプとスライディング、ダッシュ、そしてスキルを駆使して、暴走ドローンや警備ロボを蹴散らしながら最長距離を目指そう。</p>
+        </div>
+        <div class="mode-buttons button-row">
+          <button type="button" data-start="easy">EASY</button>
+          <button type="button" data-start="normal">NORMAL</button>
+          <button type="button" data-start="hard">HARD</button>
+        </div>
+        <div>
+          <p class="difficulty-tag">速度と敵配置が難易度で変化します。操作：クリック/↑ ジャンプ、↓ スライディング、→ ダッシュ、スペース スキル。</p>
+        </div>
+        <div class="button-row">
+          <button id="btnUpgrade" type="button">強化メニュー</button>
+          <button id="btnShowRanking" type="button" class="subtle">ローカルランキング</button>
+          <button id="btnTutorial" type="button" class="subtle">操作チュートリアル</button>
+          <button id="btnBackMenu" type="button" class="subtle">メニューに戻る</button>
+        </div>
+        <div id="titleStats" class="list"></div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="overlay" aria-live="polite">
+      <div class="panel">
+        <div>
+          <h2>リザルト</h2>
+          <p id="resultMessage">お疲れさまでした！</p>
+        </div>
+        <div class="result-grid">
+          <div class="result-card">
+            <span>走行距離</span>
+            <strong id="resultDistance">0m</strong>
+          </div>
+          <div class="result-card">
+            <span>最終スコア</span>
+            <strong id="resultScore">0</strong>
+          </div>
+          <div class="result-card">
+            <span>撃破数</span>
+            <strong id="resultKills">0</strong>
+          </div>
+          <div class="result-card">
+            <span>最大コンボ</span>
+            <strong id="resultCombo">x1.0</strong>
+          </div>
+          <div class="result-card">
+            <span>取得コイン</span>
+            <strong id="resultCoins">0</strong>
+          </div>
+          <div class="result-card">
+            <span>ベストスコア</span>
+            <strong id="resultBest">0</strong>
+          </div>
+        </div>
+        <div>
+          <h3>入手実績</h3>
+          <div id="resultAchievements" class="badge-list"></div>
+        </div>
+        <div class="button-row">
+          <button id="btnRetry" type="button">リトライ</button>
+          <button id="btnResultUpgrade" type="button" class="subtle">強化</button>
+          <button id="btnResultTitle" type="button" class="subtle">タイトルへ</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="upgradeScreen" class="overlay" aria-live="polite">
+      <div class="panel">
+        <div>
+          <h2>強化メニュー</h2>
+          <p>集めたコインでランナーを強化しよう。新スキルの解放や性能アップで距離を伸ばせます。</p>
+        </div>
+        <div class="list-item">
+          <strong>所持コイン</strong>
+          <small id="upgradeCoins">0</small>
+        </div>
+        <div id="upgradeList" class="upgrade-list"></div>
+        <div class="button-row">
+          <button id="btnUpgradeClose" type="button" class="subtle">閉じる</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="tutorialScreen" class="overlay" aria-live="polite">
+      <div class="panel">
+        <h2>操作チュートリアル</h2>
+        <div class="list">
+          <div class="list-item">
+            <div>
+              <strong>ジャンプ</strong>
+              <p>クリック / タップ / ↑キー。押し続けるほど高さが伸びます。</p>
+            </div>
+          </div>
+          <div class="list-item">
+            <div>
+              <strong>スライディング</strong>
+              <p>↓キーまたは下方向フリック。低い障害物をかわしつつスピードを維持。</p>
+            </div>
+          </div>
+          <div class="list-item">
+            <div>
+              <strong>ダッシュ</strong>
+              <p>→キーまたは右フリックで短距離加速。敵を弾き飛ばしてコンボ倍率を高めよう。</p>
+            </div>
+          </div>
+          <div class="list-item">
+            <div>
+              <strong>スキル</strong>
+              <p>スペースキー。スキルゲージが満タンで発動。スキルオーブで新しい能力を習得できます。</p>
+            </div>
+          </div>
+        </div>
+        <div class="button-row">
+          <button id="btnTutorialClose" type="button" class="subtle">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="rankingScreen" class="overlay" aria-live="polite">
+      <div class="panel">
+        <h2>ローカルランキング</h2>
+        <div id="rankingList" class="list"></div>
+        <div class="button-row">
+          <button id="btnRankingClose" type="button" class="subtle">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script>
+  (() => {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const hudDistance = document.getElementById('hudDistance');
+    const hudScore = document.getElementById('hudScore');
+    const hudCombo = document.getElementById('hudCombo');
+    const hudCoins = document.getElementById('hudCoins');
+    const hudSkillName = document.getElementById('hudSkillName');
+    const hudSkillFill = document.getElementById('hudSkillFill');
+    const hudSkillLabel = document.getElementById('hudSkillLabel');
+    const hudShield = document.getElementById('hudShield');
+    const btnMute = document.getElementById('btnMute');
+
+    const titleScreen = document.getElementById('titleScreen');
+    const resultScreen = document.getElementById('resultScreen');
+    const upgradeScreen = document.getElementById('upgradeScreen');
+    const tutorialScreen = document.getElementById('tutorialScreen');
+    const rankingScreen = document.getElementById('rankingScreen');
+
+    const resultDistance = document.getElementById('resultDistance');
+    const resultScore = document.getElementById('resultScore');
+    const resultKills = document.getElementById('resultKills');
+    const resultCombo = document.getElementById('resultCombo');
+    const resultCoins = document.getElementById('resultCoins');
+    const resultBest = document.getElementById('resultBest');
+    const resultAchievements = document.getElementById('resultAchievements');
+    const resultMessage = document.getElementById('resultMessage');
+
+    const titleStats = document.getElementById('titleStats');
+    const rankingList = document.getElementById('rankingList');
+
+    const upgradeCoins = document.getElementById('upgradeCoins');
+    const upgradeList = document.getElementById('upgradeList');
+
+    const toast = document.getElementById('toast');
+
+    const profileKey = 'metroRunnerProfile_v1';
+    const defaultProfile = {
+      bestScore: 0,
+      coins: 0,
+      upgrades: { speed: 0, jump: 0, dash: 0, skill: 0 },
+      achievements: {},
+      ranking: []
+    };
+
+    let profile = loadProfile();
+
+    const BASE_WIDTH = 1280;
+    const BASE_HEIGHT = 720;
+
+    const difficultySettings = {
+      easy: {
+        key: 'easy',
+        name: 'EASY',
+        baseSpeed: 540,
+        speedCap: 820,
+        acceleration: 26,
+        spawnInterval: 1.2,
+        enemyBias: 0.35,
+        description: '速度ゆっくり。障害物が少なめ。'
+      },
+      normal: {
+        key: 'normal',
+        name: 'NORMAL',
+        baseSpeed: 620,
+        speedCap: 980,
+        acceleration: 34,
+        spawnInterval: 1.0,
+        enemyBias: 0.5,
+        description: '標準的なスピード。敵・罠のバランス良し。'
+      },
+      hard: {
+        key: 'hard',
+        name: 'HARD',
+        baseSpeed: 720,
+        speedCap: 1140,
+        acceleration: 45,
+        spawnInterval: 0.85,
+        enemyBias: 0.64,
+        description: '高速で開幕。敵もトラップも手強い。'
+      }
+    };
+
+    const stageThemes = [
+      {
+        name: '夜のホーム',
+        gradient: ['#05070c', '#0b1020'],
+        railColor: '#1c2537',
+        neon: ['#6cf', '#9ff', '#ff8ed6'],
+        detail: '遠くの電光掲示板が流れる。'
+      },
+      {
+        name: '地下トンネル',
+        gradient: ['#04060c', '#11131d'],
+        railColor: '#1c202c',
+        neon: ['#ffbf66', '#70f6ff', '#bba7ff'],
+        detail: '天井を照らす保守灯と火花。'
+      },
+      {
+        name: '車両内部',
+        gradient: ['#0b111d', '#182034'],
+        railColor: '#1f293c',
+        neon: ['#ff66a8', '#6cffac', '#ffd866'],
+        detail: '広告パネルと車内ディスプレイが連続する。'
+      },
+      {
+        name: '保線区画',
+        gradient: ['#05060d', '#10141f'],
+        railColor: '#20293a',
+        neon: ['#ff825c', '#66ddff', '#8c9cff'],
+        detail: '補修用ロボットと配電盤が並ぶ。'
+      }
+    ];
+
+    const UPGRADE_DEFS = [
+      {
+        key: 'speed',
+        name: 'スプリントブースト',
+        desc: '最高速度と加速が向上。',
+        max: 6,
+        cost: level => 120 + level * 140,
+        detail: level => `最高速度+${(level + 1) * 4}%`
+      },
+      {
+        key: 'jump',
+        name: 'エアロシューズ',
+        desc: 'ジャンプ高度と空中制御力がアップ。',
+        max: 5,
+        cost: level => 140 + level * 160,
+        detail: level => `ジャンプ力+${(level + 1) * 6}%`
+      },
+      {
+        key: 'dash',
+        name: 'タクティカルダッシュ',
+        desc: 'ダッシュ持続が延び、硬直が短縮。',
+        max: 6,
+        cost: level => 160 + level * 170,
+        detail: level => `硬直- ${(level + 1) * 6}%`
+      },
+      {
+        key: 'skill',
+        name: 'ARスキルチップ',
+        desc: 'スキルゲージ上昇率アップ。新スキル解放。',
+        max: 5,
+        cost: level => 200 + level * 220,
+        detail: level => `ゲージ効率+${(level + 1) * 10}%`
+      }
+    ];
+
+    const SKILL_POOL = {
+      base: ['shockwave'],
+      advanced: ['doubleJump', 'grapple'],
+      expert: ['timeWarp']
+    };
+
+    const ACHIEVEMENTS = [
+      { id: 'dist500', name: '初地下鉄突破', condition: run => run.distance >= 500, description: '距離500m到達' },
+      { id: 'dist1500', name: '路線マスター', condition: run => run.distance >= 1500, description: '距離1500m到達' },
+      { id: 'kills20', name: 'ドローンハンター', condition: run => run.kills >= 20, description: '敵を20体撃破' },
+      { id: 'comboMax', name: 'コンボスパーク', condition: run => run.maxCombo >= 2.5, description: 'コンボ倍率x2.5以上を達成' },
+      { id: 'coins80', name: 'メトロ投資家', condition: run => run.coins >= 80, description: 'コインを80枚集める' },
+      { id: 'hardClear', name: 'ハードシフター', condition: run => run.difficulty === 'hard' && run.distance >= 800, description: 'HARDで800m到達' }
+    ];
+
+    const state = {
+      phase: 'title',
+      difficulty: difficultySettings.normal,
+      running: false,
+      distance: 0,
+      score: 0,
+      combo: 1,
+      dashChain: 0,
+      comboTimer: 0,
+      maxCombo: 1,
+      coins: 0,
+      kills: 0,
+      itemScore: 0,
+      killScore: 0,
+      time: 0,
+      stageIndex: 0,
+      stageTimer: 0,
+      stageName: stageThemes[0].name,
+      nextStage: 500,
+      themeLerp: 0,
+      lastHit: 0,
+      result: null,
+      achievements: []
+    };
+
+    const player = {
+      x: BASE_WIDTH * 0.24,
+      y: BASE_HEIGHT * 0.62,
+      width: 60,
+      height: 96,
+      vy: 0,
+      onGround: true,
+      jumping: false,
+      jumpHold: 0,
+      jumpMaxHold: 0.26,
+      doubleJumpReady: false,
+      sliding: false,
+      slideTimer: 0,
+      dashTimer: 0,
+      dashCooldown: 0,
+      dashLock: 0,
+      invincible: 0,
+      shield: 0,
+      skill: null,
+      skillCharge: 0,
+      skillCap: 100,
+      skillReady: false,
+      speedBoost: 0,
+      energyTimer: 0,
+      animation: 0
+    };
+
+    const world = {
+      gravity: 2100,
+      speed: difficultySettings.normal.baseSpeed,
+      targetSpeed: difficultySettings.normal.baseSpeed,
+      speedCap: difficultySettings.normal.speedCap,
+      speedEase: 0,
+      spawnTimer: 0,
+      coinTimer: 2.4,
+      itemTimer: 4,
+      enemyTimer: 0,
+      slowmo: 0,
+      shake: 0
+    };
+
+    const camera = {
+      offsetX: 0,
+      offsetY: 0
+    };
+
+    const arrays = {
+      obstacles: [],
+      enemies: [],
+      items: [],
+      particles: [],
+      background: [],
+      trains: []
+    };
+
+    let lastTimestamp = 0;
+
+    const keys = new Set();
+    const pointer = { active: false, startX: 0, startY: 0, startTime: 0 };
+
+    const AUDIO = createAudioSystem();
+    const cloneProfile = obj => (typeof structuredClone === 'function') ? structuredClone(obj) : JSON.parse(JSON.stringify(obj));
+
+    function loadProfile() {
+      try {
+        const raw = localStorage.getItem(profileKey);
+        if (!raw) return cloneProfile(defaultProfile);
+        const parsed = JSON.parse(raw);
+        const base = cloneProfile(defaultProfile);
+        return {
+          ...base,
+          ...parsed,
+          upgrades: { ...base.upgrades, ...(parsed.upgrades || {}) },
+          achievements: { ...parsed.achievements },
+          ranking: Array.isArray(parsed.ranking) ? parsed.ranking : []
+        };
+      } catch (err) {
+        console.warn('Failed to load profile', err);
+        return cloneProfile(defaultProfile);
+      }
+    }
+
+    function saveProfile() {
+      try {
+        localStorage.setItem(profileKey, JSON.stringify(profile));
+      } catch (err) {
+        console.warn('Failed to save profile', err);
+      }
+    }
+
+    function showOverlay(el) {
+      for (const overlay of [titleScreen, resultScreen, upgradeScreen, tutorialScreen, rankingScreen]) {
+        overlay.classList.remove('active');
+      }
+      if (el) {
+        el.classList.add('active');
+      }
+    }
+
+    function formatMeters(value) {
+      return `${Math.floor(value).toLocaleString()}m`;
+    }
+
+    function updateHUD() {
+      hudDistance.textContent = formatMeters(state.distance);
+      hudScore.textContent = Math.floor(state.score).toLocaleString();
+      hudCombo.textContent = `x${state.combo.toFixed(1)}`;
+      hudCoins.textContent = state.coins;
+      hudSkillName.textContent = player.skill ? skillName(player.skill) : '--';
+      const charge = Math.min(100, Math.floor(player.skillCharge));
+      hudSkillFill.style.width = `${charge}%`;
+      hudSkillLabel.textContent = `${charge}%`;
+      hudSkillFill.parentElement.setAttribute('aria-valuenow', `${charge}`);
+      hudShield.innerHTML = '';
+      const shields = Math.max(0, Math.min(3, player.shield));
+      for (let i = 0; i < 3; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'shield-dot' + (i < shields ? '' : ' empty');
+        hudShield.appendChild(dot);
+      }
+      btnMute.textContent = AUDIO.muted ? '🔇 MUTED' : '🔈 MUTE';
+      btnMute.classList.toggle('muted', AUDIO.muted);
+    }
+
+    function rebuildTitleStats() {
+      titleStats.innerHTML = '';
+      const best = document.createElement('div');
+      best.className = 'list-item';
+      best.innerHTML = `<strong>ベストスコア</strong><small>${profile.bestScore.toLocaleString()}</small>`;
+      titleStats.appendChild(best);
+      const coins = document.createElement('div');
+      coins.className = 'list-item';
+      coins.innerHTML = `<strong>所持コイン</strong><small>${profile.coins}</small>`;
+      titleStats.appendChild(coins);
+      const upgrades = document.createElement('div');
+      upgrades.className = 'list-item';
+      upgrades.innerHTML = `<strong>アップグレード</strong><small>速度Lv${profile.upgrades.speed} / ジャンプLv${profile.upgrades.jump} / ダッシュLv${profile.upgrades.dash} / スキルLv${profile.upgrades.skill}</small>`;
+      titleStats.appendChild(upgrades);
+    }
+
+    function rebuildRanking() {
+      rankingList.innerHTML = '';
+      if (!profile.ranking.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'まだスコアが登録されていません。走って記録を残しましょう！';
+        rankingList.appendChild(empty);
+        return;
+      }
+      const list = profile.ranking.slice(0, 10);
+      list.forEach((entry, index) => {
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        const left = document.createElement('div');
+        left.innerHTML = `<strong>#${index + 1} ${entry.score.toLocaleString()}</strong><p style="margin:0;font-size:0.75rem;opacity:0.7;">${entry.distance.toLocaleString()}m / ${entry.kills}撃破 / ${entry.difficulty.toUpperCase()}</p>`;
+        const right = document.createElement('small');
+        right.textContent = entry.date;
+        item.append(left, right);
+        rankingList.appendChild(item);
+      });
+    }
+
+    function rebuildUpgrades() {
+      upgradeCoins.textContent = profile.coins.toLocaleString();
+      upgradeList.innerHTML = '';
+      UPGRADE_DEFS.forEach(def => {
+        const level = profile.upgrades[def.key] || 0;
+        const card = document.createElement('div');
+        card.className = 'upgrade-card';
+        const title = document.createElement('div');
+        title.innerHTML = `<strong>${def.name}</strong><p>${def.desc}</p>`;
+        const info = document.createElement('div');
+        info.innerHTML = `<small>Lv ${level}/${def.max} ｜ ${level < def.max ? def.detail(level) : '最大強化済み'}</small>`;
+        const footer = document.createElement('footer');
+        const cost = def.cost(level);
+        const costLabel = document.createElement('span');
+        costLabel.textContent = level >= def.max ? 'MAX' : `${cost} コイン`;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = level >= def.max ? '強化完了' : '強化する';
+        btn.disabled = level >= def.max || profile.coins < cost;
+        btn.addEventListener('click', () => {
+          if (profile.coins < cost) {
+            showToast('コインが足りません');
+            return;
+          }
+          profile.coins -= cost;
+          profile.upgrades[def.key] = Math.min(def.max, level + 1);
+          saveProfile();
+          showToast(`${def.name} を強化しました`);
+          rebuildUpgrades();
+          rebuildTitleStats();
+        });
+        footer.append(costLabel, btn);
+        card.append(title, info, footer);
+        upgradeList.appendChild(card);
+      });
+    }
+
+    function skillName(key) {
+      switch (key) {
+        case 'shockwave':
+          return 'ショックウェーブ';
+        case 'doubleJump':
+          return '二段ジャンプ';
+        case 'grapple':
+          return 'グラップルフック';
+        case 'timeWarp':
+          return 'クロノドライブ';
+        default:
+          return '--';
+      }
+    }
+
+    function skillDescription(key) {
+      switch (key) {
+        case 'shockwave':
+          return '周囲の敵とトラップを弾き飛ばす衝撃波。コンボを継続。';
+        case 'doubleJump':
+          return '一定時間、空中でもう一度ジャンプ可能。';
+        case 'grapple':
+          return '先の足場にフックを射出し、一気に加速＆高度を得る。';
+        case 'timeWarp':
+          return '短時間スローモーション化。全行動の余裕が生まれる。';
+        default:
+          return '';
+      }
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function randomRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function resetRun(difficulty) {
+      state.phase = 'running';
+      state.difficulty = difficulty;
+      state.distance = 0;
+      state.score = 0;
+      state.combo = 1;
+      state.dashChain = 0;
+      state.comboTimer = 0;
+      state.maxCombo = 1;
+      state.coins = 0;
+      state.kills = 0;
+      state.itemScore = 0;
+      state.killScore = 0;
+      state.time = 0;
+      state.stageIndex = 0;
+      state.stageName = stageThemes[0].name;
+      state.nextStage = 450;
+      state.themeLerp = 0;
+      state.achievements = [];
+      state.result = null;
+
+      arrays.obstacles.length = 0;
+      arrays.enemies.length = 0;
+      arrays.items.length = 0;
+      arrays.particles.length = 0;
+      arrays.background.length = 0;
+      arrays.trains.length = 0;
+
+      player.y = BASE_HEIGHT * 0.62;
+      player.vy = 0;
+      player.onGround = true;
+      player.jumping = false;
+      player.jumpHold = 0;
+      player.jumpMaxHold = 0.26 + profile.upgrades.jump * 0.02;
+      player.doubleJumpReady = false;
+      player.sliding = false;
+      player.slideTimer = 0;
+      player.dashTimer = 0;
+      player.dashCooldown = 0;
+      player.dashLock = 0;
+      player.invincible = 0;
+      player.shield = Math.min(player.shield, 3);
+      player.skillCharge = 0;
+      player.skillReady = false;
+      player.energyTimer = 0;
+      player.animation = 0;
+      player.height = 96;
+
+      world.speed = difficulty.baseSpeed * (1 + profile.upgrades.speed * 0.04);
+      world.targetSpeed = world.speed;
+      world.speedCap = difficulty.speedCap * (1 + profile.upgrades.speed * 0.05);
+      world.spawnTimer = difficulty.spawnInterval;
+      world.coinTimer = 1.8;
+      world.itemTimer = 3.2;
+      world.enemyTimer = 1.5;
+      world.slowmo = 0;
+      world.shake = 0;
+
+      AUDIO.startBgm();
+      updateHUD();
+    }
+
+    function endRun(reason) {
+      state.phase = 'result';
+      state.result = {
+        reason,
+        distance: Math.floor(state.distance),
+        score: Math.floor(state.score),
+        kills: state.kills,
+        coins: state.coins,
+        maxCombo: state.maxCombo,
+        difficulty: state.difficulty.key
+      };
+      AUDIO.stopBgm();
+      showOverlay(resultScreen);
+      populateResult();
+      rebuildTitleStats();
+    }
+
+    function populateResult() {
+      if (!state.result) return;
+      const res = state.result;
+      const isBest = res.score > profile.bestScore;
+      resultDistance.textContent = `${res.distance.toLocaleString()}m`;
+      resultScore.textContent = res.score.toLocaleString();
+      resultKills.textContent = res.kills.toString();
+      resultCombo.textContent = `x${state.maxCombo.toFixed(1)}`;
+      resultCoins.textContent = res.coins.toString();
+      if (isBest) {
+        profile.bestScore = res.score;
+        resultMessage.textContent = 'ベストスコア更新！地下鉄の英雄だ！';
+      } else {
+        resultMessage.textContent = '次のランでさらに遠くへ。';
+      }
+      profile.coins += res.coins;
+      resultBest.textContent = profile.bestScore.toLocaleString();
+
+      const runStats = {
+        distance: res.distance,
+        score: res.score,
+        kills: res.kills,
+        coins: res.coins,
+        maxCombo: state.maxCombo,
+        difficulty: res.difficulty
+      };
+
+      const achieved = [];
+      ACHIEVEMENTS.forEach(def => {
+        if (!profile.achievements[def.id] && def.condition(runStats)) {
+          profile.achievements[def.id] = true;
+          achieved.push(def);
+        }
+      });
+      state.achievements = achieved;
+      resultAchievements.innerHTML = '';
+      if (achieved.length) {
+        achieved.forEach(a => {
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = `${a.name}`;
+          resultAchievements.appendChild(badge);
+        });
+      } else {
+        const none = document.createElement('p');
+        none.textContent = '今回新しく解除された実績はありません。';
+        resultAchievements.appendChild(none);
+      }
+
+      profile.ranking.push({
+        score: res.score,
+        distance: res.distance,
+        kills: res.kills,
+        difficulty: res.difficulty,
+        date: new Date().toLocaleDateString()
+      });
+      profile.ranking.sort((a, b) => b.score - a.score);
+      if (profile.ranking.length > 20) profile.ranking.length = 20;
+
+      saveProfile();
+      rebuildRanking();
+    }
+
+    function skillPoolForLevel(level) {
+      if (level >= 4) {
+        return [...SKILL_POOL.base, ...SKILL_POOL.advanced, ...SKILL_POOL.expert];
+      }
+      if (level >= 2) {
+        return [...SKILL_POOL.base, ...SKILL_POOL.advanced];
+      }
+      return [...SKILL_POOL.base];
+    }
+
+    function rollSkill() {
+      const pool = skillPoolForLevel(profile.upgrades.skill || 0);
+      if (!pool.length) return 'shockwave';
+      const index = Math.floor(Math.random() * pool.length);
+      return pool[index];
+    }
+
+    function addSkillCharge(amount) {
+      const efficiency = 1 + (profile.upgrades.skill || 0) * 0.1;
+      player.skillCharge = clamp(player.skillCharge + amount * efficiency, 0, 100);
+      if (player.skillCharge >= 100) {
+        player.skillCharge = 100;
+        player.skillReady = true;
+      }
+    }
+
+    function spendSkillCharge() {
+      player.skillCharge = 0;
+      player.skillReady = false;
+    }
+
+    function triggerSkill() {
+      if (!player.skill || !player.skillReady) return;
+      const key = player.skill;
+      spendSkillCharge();
+      switch (key) {
+        case 'shockwave':
+          AUDIO.play('shockwave');
+          world.slowmo = 0.45;
+          world.shake = Math.max(world.shake, 12);
+          createShockwave();
+          break;
+        case 'doubleJump':
+          AUDIO.play('buff');
+          player.doubleJumpReady = true;
+          player.jumpMaxHold = 0.32 + profile.upgrades.jump * 0.02;
+          setTimeout(() => {
+            player.doubleJumpReady = false;
+            player.jumpMaxHold = 0.26 + profile.upgrades.jump * 0.02;
+          }, 6000);
+          break;
+        case 'grapple':
+          AUDIO.play('grapple');
+          player.vy = -900;
+          player.onGround = false;
+          player.y -= 8;
+          world.shake = Math.max(world.shake, 6);
+          spawnParticles(player.x + player.width, player.y + player.height / 2, 14, '#8ff');
+          break;
+        case 'timeWarp':
+          AUDIO.play('slow');
+          world.slowmo = 0.65;
+          break;
+        default:
+          break;
+      }
+      updateHUD();
+    }
+
+    function createShockwave() {
+      arrays.enemies.forEach(enemy => {
+        if (!enemy.active) return;
+        const dx = (enemy.x + enemy.width / 2) - (player.x + player.width / 2);
+        const dy = (enemy.y + enemy.height / 2) - (player.y + player.height / 2);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 250) {
+          defeatEnemy(enemy, true);
+        }
+      });
+      arrays.obstacles.forEach(ob => {
+        if (!ob.active) return;
+        const dx = (ob.x + ob.width / 2) - (player.x + player.width / 2);
+        if (Math.abs(dx) < 220) {
+          ob.active = false;
+          spawnParticles(ob.x, ob.y, 12, '#f8f88a');
+        }
+      });
+    }
+
+    function spawnParticles(x, y, count, color) {
+      for (let i = 0; i < count; i++) {
+        arrays.particles.push({
+          x: x + randomRange(-20, 20),
+          y: y + randomRange(-20, 20),
+          vx: randomRange(-160, 160),
+          vy: randomRange(-240, 60),
+          life: randomRange(0.35, 0.7),
+          color,
+          size: randomRange(3, 6)
+        });
+      }
+    }
+
+    function spawnBackgroundElement(theme) {
+      const type = Math.random();
+      if (type < 0.5) {
+        arrays.background.push({
+          type: 'light',
+          x: BASE_WIDTH + randomRange(0, 300),
+          y: randomRange(BASE_HEIGHT * 0.25, BASE_HEIGHT * 0.55),
+          width: randomRange(40, 110),
+          height: randomRange(16, 28),
+          color: theme.neon[Math.floor(Math.random() * theme.neon.length)],
+          speed: randomRange(0.35, 0.6)
+        });
+      } else {
+        arrays.background.push({
+          type: 'sign',
+          x: BASE_WIDTH + randomRange(0, 320),
+          y: randomRange(BASE_HEIGHT * 0.2, BASE_HEIGHT * 0.48),
+          width: randomRange(100, 200),
+          height: randomRange(32, 56),
+          color: theme.neon[Math.floor(Math.random() * theme.neon.length)],
+          speed: randomRange(0.4, 0.7)
+        });
+      }
+    }
+
+    function spawnTrain(theme) {
+      arrays.trains.push({
+        x: BASE_WIDTH + 200,
+        y: BASE_HEIGHT * randomRange(0.18, 0.32),
+        width: randomRange(320, 520),
+        height: randomRange(90, 110),
+        color: theme.neon[Math.floor(Math.random() * theme.neon.length)],
+        speed: randomRange(400, 520)
+      });
+    }
+
+    function spawnObstacle() {
+      const typeRoll = Math.random();
+      if (typeRoll < 0.45) {
+        arrays.obstacles.push({
+          type: 'barrier',
+          x: BASE_WIDTH + randomRange(0, 120),
+          y: BASE_HEIGHT * 0.66,
+          width: randomRange(46, 66),
+          height: randomRange(70, 110),
+          active: true
+        });
+      } else if (typeRoll < 0.75) {
+        arrays.obstacles.push({
+          type: 'low',
+          x: BASE_WIDTH + randomRange(0, 160),
+          y: BASE_HEIGHT * 0.68,
+          width: randomRange(80, 140),
+          height: randomRange(36, 48),
+          active: true
+        });
+      } else {
+        arrays.enemies.push({
+          type: 'drone',
+          x: BASE_WIDTH + randomRange(0, 140),
+          y: BASE_HEIGHT * randomRange(0.45, 0.58),
+          width: 60,
+          height: 48,
+          vx: 0,
+          active: true,
+          hp: 1
+        });
+      }
+    }
+
+    function spawnEnemy() {
+      const type = Math.random();
+      if (type < 0.5) {
+        arrays.enemies.push({
+          type: 'robot',
+          x: BASE_WIDTH + randomRange(0, 160),
+          y: BASE_HEIGHT * 0.66,
+          width: 70,
+          height: 92,
+          vx: randomRange(-30, 0),
+          active: true,
+          hp: 1
+        });
+      } else {
+        arrays.enemies.push({
+          type: 'drone',
+          x: BASE_WIDTH + randomRange(0, 180),
+          y: BASE_HEIGHT * randomRange(0.38, 0.6),
+          width: 64,
+          height: 50,
+          vx: randomRange(-20, 0),
+          active: true,
+          hp: 1
+        });
+      }
+    }
+
+    function spawnItem() {
+      const roll = Math.random();
+      if (roll < 0.6) {
+        spawnCoinWave();
+      } else if (roll < 0.75) {
+        arrays.items.push({ type: 'energy', x: BASE_WIDTH + 120, y: BASE_HEIGHT * randomRange(0.48, 0.6), width: 36, height: 36, active: true });
+      } else if (roll < 0.9) {
+        arrays.items.push({ type: 'shield', x: BASE_WIDTH + 120, y: BASE_HEIGHT * randomRange(0.5, 0.65), width: 38, height: 38, active: true });
+      } else {
+        arrays.items.push({ type: 'skill', x: BASE_WIDTH + 140, y: BASE_HEIGHT * randomRange(0.4, 0.58), width: 42, height: 42, active: true });
+      }
+    }
+
+    function spawnCoinWave() {
+      const count = 4 + Math.floor(Math.random() * 4);
+      const baseX = BASE_WIDTH + randomRange(120, 260);
+      const baseY = BASE_HEIGHT * randomRange(0.35, 0.6);
+      for (let i = 0; i < count; i++) {
+        arrays.items.push({
+          type: 'coin',
+          x: baseX + i * 42,
+          y: baseY - Math.sin(i / count * Math.PI) * 50,
+          width: 28,
+          height: 28,
+          active: true
+        });
+      }
+    }
+
+    function updateGame(delta) {
+      const dt = delta * (world.slowmo > 0 ? world.slowmo : 1);
+      world.slowmo = Math.max(0, world.slowmo - delta * 0.4);
+      state.time += dt;
+
+      const difficulty = state.difficulty;
+      const accelBonus = 1 + profile.upgrades.speed * 0.08;
+      world.targetSpeed = Math.min(world.targetSpeed + difficulty.acceleration * accelBonus * dt, world.speedCap);
+      world.speed += (world.targetSpeed - world.speed) * Math.min(1, dt * 1.8);
+      if (player.energyTimer > 0) {
+        player.energyTimer -= dt;
+        world.speed = Math.min(world.speed + 220 * dt, world.speedCap * 1.15);
+      }
+
+      state.distance += world.speed * dt * 0.1;
+      state.score = state.distance * 10 + state.itemScore + state.killScore;
+
+      if (state.distance >= state.nextStage) {
+        state.stageIndex = (state.stageIndex + 1) % stageThemes.length;
+        state.stageName = stageThemes[state.stageIndex].name;
+        spawnTrain(stageThemes[state.stageIndex]);
+        state.nextStage += randomRange(480, 720);
+        state.themeLerp = 1;
+      }
+      state.themeLerp = Math.max(0, state.themeLerp - dt * 0.4);
+
+      player.invincible = Math.max(0, player.invincible - dt);
+      player.dashTimer = Math.max(0, player.dashTimer - dt);
+      player.dashCooldown = Math.max(0, player.dashCooldown - dt);
+      player.dashLock = Math.max(0, player.dashLock - dt);
+      player.slideTimer = Math.max(0, player.slideTimer - dt);
+      if (player.slideTimer <= 0 && player.sliding) {
+        player.sliding = false;
+      }
+
+      if (keys.has('ArrowUp') || keys.has('Space') || keys.has('PointerJump')) {
+        requestJump(dt);
+      } else {
+        player.jumping = false;
+      }
+
+      if (keys.has('ArrowDown') || keys.has('PointerDown')) {
+        startSlide();
+      }
+
+      if (keys.has('ArrowRight') || keys.has('PointerDash')) {
+        tryDash();
+        keys.delete('ArrowRight');
+        keys.delete('PointerDash');
+      }
+
+      if (keys.has('SpaceSkill')) {
+        triggerSkill();
+        keys.delete('SpaceSkill');
+      }
+
+      applyPhysics(dt);
+      updateEntities(dt);
+      handleCollisions();
+      updateHUD();
+      AUDIO.update(world.speed);
+    }
+
+    function requestJump(dt) {
+      if (player.onGround && !player.sliding) {
+        if (!player.jumping) {
+          player.jumping = true;
+          player.jumpHold = 0;
+          player.onGround = false;
+          player.vy = -860 - profile.upgrades.jump * 40;
+          AUDIO.play('jump');
+        }
+      } else if (!player.onGround && player.doubleJumpReady && !player.jumping && player.vy > -200) {
+        player.jumping = true;
+        player.jumpHold = 0;
+        player.doubleJumpReady = false;
+        player.vy = -880 - profile.upgrades.jump * 40;
+        spawnParticles(player.x, player.y + player.height / 2, 14, '#9ff');
+        AUDIO.play('jump');
+      }
+      if (player.jumping) {
+        player.jumpHold += dt;
+        if (player.jumpHold < player.jumpMaxHold) {
+          player.vy -= 2200 * dt;
+        }
+      }
+    }
+
+    function startSlide() {
+      if (!player.onGround || player.sliding) return;
+      player.sliding = true;
+      player.slideTimer = 0.55 - profile.upgrades.dash * 0.03;
+      player.height = 64;
+      setTimeout(() => {
+        player.height = 96;
+      }, (player.slideTimer * 1000) | 0);
+      AUDIO.play('slide');
+    }
+
+    function tryDash() {
+      if (player.dashCooldown > 0 || player.dashTimer > 0) return;
+      player.dashTimer = 0.3 + profile.upgrades.dash * 0.03;
+      player.dashCooldown = 1.1 - profile.upgrades.dash * 0.08;
+      player.dashLock = 0.25;
+      world.shake = Math.max(world.shake, 5);
+      spawnParticles(player.x + player.width, player.y + player.height / 2, 12, '#6cf');
+      AUDIO.play('dash');
+    }
+
+    function applyPhysics(dt) {
+      player.animation += dt * (world.speed / 300);
+      if (!player.onGround) {
+        player.vy += world.gravity * dt;
+      }
+      player.y += player.vy * dt;
+      const groundY = BASE_HEIGHT * 0.68 - (player.sliding ? 24 : 0);
+      if (player.y + player.height >= groundY) {
+        player.y = groundY - player.height;
+        player.vy = 0;
+        player.onGround = true;
+        player.jumping = false;
+      } else {
+        player.onGround = false;
+      }
+      if (player.y < BASE_HEIGHT * 0.2) {
+        player.vy += 400 * dt;
+      }
+    }
+
+    function updateEntities(dt) {
+      world.spawnTimer -= dt;
+      if (world.spawnTimer <= 0) {
+        spawnObstacle();
+        world.spawnTimer = state.difficulty.spawnInterval * randomRange(0.8, 1.2);
+      }
+
+      world.enemyTimer -= dt;
+      if (world.enemyTimer <= 0) {
+        if (Math.random() < state.difficulty.enemyBias) {
+          spawnEnemy();
+        }
+        world.enemyTimer = randomRange(1.2, 2.6);
+      }
+
+      world.itemTimer -= dt;
+      if (world.itemTimer <= 0) {
+        spawnItem();
+        world.itemTimer = randomRange(3, 5.2);
+      }
+
+      if (arrays.background.length < 12) {
+        spawnBackgroundElement(stageThemes[state.stageIndex]);
+      }
+
+      if (Math.random() < dt * 0.08) {
+        spawnBackgroundElement(stageThemes[state.stageIndex]);
+      }
+
+      arrays.background = arrays.background.filter(b => b.x + b.width > -80);
+      arrays.background.forEach(bg => {
+        bg.x -= world.speed * dt * bg.speed;
+      });
+
+      arrays.trains = arrays.trains.filter(train => train.x + train.width > -200);
+      arrays.trains.forEach(train => {
+        train.x -= train.speed * dt;
+      });
+
+      arrays.obstacles = arrays.obstacles.filter(ob => ob.active && ob.x + ob.width > -80);
+      arrays.obstacles.forEach(ob => {
+        ob.x -= world.speed * dt;
+      });
+
+      arrays.enemies = arrays.enemies.filter(en => en.active && en.x + en.width > -120);
+      arrays.enemies.forEach(en => {
+        en.x -= world.speed * dt * 1.02;
+        en.x += en.vx * dt;
+        if (en.type === 'drone') {
+          en.y += Math.sin(state.time * 3 + en.x * 0.01) * 30 * dt;
+        }
+      });
+
+      arrays.items = arrays.items.filter(it => it.active && it.x + it.width > -80);
+      arrays.items.forEach(it => {
+        it.x -= world.speed * dt;
+      });
+
+      arrays.particles = arrays.particles.filter(p => p.life > 0);
+      arrays.particles.forEach(p => {
+        p.life -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 600 * dt;
+      });
+
+      if (state.comboTimer > 0) {
+        state.comboTimer -= dt;
+        if (state.comboTimer <= 0) {
+          state.combo = 1;
+          state.dashChain = 0;
+        }
+      }
+
+      if (world.shake > 0) {
+        world.shake = Math.max(0, world.shake - dt * 16);
+      }
+    }
+
+    function handleCollisions() {
+      const playerBox = getPlayerBox();
+
+      arrays.items.forEach(item => {
+        if (!item.active) return;
+        if (rectsOverlap(playerBox, item)) {
+          collectItem(item);
+        }
+      });
+
+      arrays.enemies.forEach(enemy => {
+        if (!enemy.active) return;
+        if (rectsOverlap(playerBox, enemy)) {
+          if (player.dashTimer > 0) {
+            defeatEnemy(enemy, false);
+          } else {
+            takeHit(enemy);
+          }
+        }
+      });
+
+      arrays.obstacles.forEach(ob => {
+        if (!ob.active) return;
+        if (rectsOverlap(playerBox, ob)) {
+          if (player.dashTimer > 0 && ob.type === 'barrier') {
+            ob.active = false;
+            spawnParticles(ob.x, ob.y, 10, '#fbe066');
+            AUDIO.play('hit');
+          } else if (ob.type === 'low' && player.sliding) {
+            ob.active = false;
+            spawnParticles(ob.x, ob.y, 6, '#9fd');
+          } else {
+            takeHit(ob);
+          }
+        }
+      });
+    }
+
+    function getPlayerBox() {
+      const width = player.sliding ? player.width + 16 : player.width;
+      const height = player.sliding ? player.height - 12 : player.height;
+      return {
+        x: player.x,
+        y: player.y,
+        width,
+        height
+      };
+    }
+
+    function rectsOverlap(a, b) {
+      return a.x < b.x + b.width &&
+             a.x + a.width > b.x &&
+             a.y < b.y + b.height &&
+             a.y + a.height > b.y;
+    }
+
+    function collectItem(item) {
+      item.active = false;
+      switch (item.type) {
+        case 'coin':
+          state.coins += 1;
+          state.itemScore += 15;
+          addSkillCharge(6);
+          AUDIO.play('coin');
+          break;
+        case 'energy':
+          player.energyTimer = 3.5;
+          state.itemScore += 40;
+          world.shake = Math.max(world.shake, 4);
+          AUDIO.play('energy');
+          break;
+        case 'shield':
+          player.shield = Math.min(3, player.shield + 1);
+          state.itemScore += 60;
+          AUDIO.play('shield');
+          break;
+        case 'skill':
+          player.skill = rollSkill();
+          player.skillReady = false;
+          player.skillCharge = 0;
+          showToast(`${skillName(player.skill)} を習得！ ${skillDescription(player.skill)}`);
+          AUDIO.play('skill');
+          break;
+        default:
+          break;
+      }
+    }
+
+    function defeatEnemy(enemy, fromSkill) {
+      enemy.active = false;
+      const multiplier = comboMultiplier();
+      state.killScore += Math.round(120 * multiplier);
+      state.kills += 1;
+      state.combo = Math.min(3, parseFloat((multiplier).toFixed(1)));
+      state.dashChain += 1;
+      state.comboTimer = 3.2;
+      state.maxCombo = Math.max(state.maxCombo, multiplier);
+      addSkillCharge(fromSkill ? 10 : 12);
+      spawnParticles(enemy.x, enemy.y, 16, fromSkill ? '#f4f49a' : '#6cf');
+      if (fromSkill) {
+        AUDIO.play('shockwave');
+      } else {
+        AUDIO.play('hit');
+      }
+      if (!fromSkill) {
+        world.shake = Math.max(world.shake, 6 + state.dashChain * 1.2);
+      }
+    }
+
+    function comboMultiplier() {
+      const base = 1 + Math.min(state.dashChain, 4) * 0.5;
+      return clamp(base, 1, 3);
+    }
+
+    function takeHit(source) {
+      if (player.invincible > 0) return;
+      if (player.shield > 0) {
+        player.shield -= 1;
+        player.invincible = 1.2;
+        world.shake = Math.max(world.shake, 8);
+        spawnParticles(player.x, player.y, 18, '#9ff');
+        AUDIO.play('guard');
+        return;
+      }
+      AUDIO.play('damage');
+      endRun(source.type || 'obstacle');
+    }
+
+    function renderGame() {
+      const theme = stageThemes[state.stageIndex];
+      const gradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+      gradient.addColorStop(0, theme.gradient[0]);
+      gradient.addColorStop(1, theme.gradient[1]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+      ctx.save();
+      if (world.shake > 0) {
+        ctx.translate(randomRange(-world.shake, world.shake), randomRange(-world.shake, world.shake));
+      }
+
+      arrays.background.forEach(bg => {
+        ctx.fillStyle = bg.color;
+        ctx.globalAlpha = bg.type === 'light' ? 0.4 : 0.18;
+        ctx.fillRect(bg.x, bg.y, bg.width, bg.height);
+        ctx.globalAlpha = 1;
+      });
+
+      arrays.trains.forEach(train => {
+        ctx.fillStyle = 'rgba(60,90,140,0.5)';
+        ctx.fillRect(train.x, train.y, train.width, train.height);
+        ctx.fillStyle = theme.neon[0];
+        ctx.globalAlpha = 0.35;
+        ctx.fillRect(train.x + 10, train.y + 20, train.width - 20, train.height - 40);
+        ctx.globalAlpha = 1;
+      });
+
+      ctx.fillStyle = theme.railColor;
+      ctx.fillRect(0, BASE_HEIGHT * 0.68, BASE_WIDTH, BASE_HEIGHT * 0.32);
+      ctx.fillStyle = '#0c1320';
+      for (let i = 0; i < 8; i++) {
+        ctx.globalAlpha = 0.08 + i * 0.04;
+        ctx.fillRect(i * 160 - (state.time * world.speed * 0.05 % 160), BASE_HEIGHT * 0.68 + i * 4, 120, 4);
+      }
+      ctx.globalAlpha = 1;
+
+      arrays.obstacles.forEach(ob => {
+        ctx.fillStyle = ob.type === 'low' ? '#a33' : '#c9953a';
+        ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(ob.x, ob.y, ob.width, 6);
+      });
+
+      arrays.enemies.forEach(en => {
+        if (en.type === 'robot') {
+          ctx.fillStyle = '#5880ff';
+          ctx.fillRect(en.x, en.y, en.width, en.height);
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(en.x + 12, en.y + 20, 28, 12);
+        } else {
+          ctx.fillStyle = '#6cf';
+          ctx.beginPath();
+          ctx.ellipse(en.x + en.width / 2, en.y + en.height / 2, en.width / 2, en.height / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(en.x + en.width / 2 - 10, en.y + en.height / 2 - 4, 20, 8);
+        }
+      });
+
+      arrays.items.forEach(item => {
+        switch (item.type) {
+          case 'coin':
+            ctx.fillStyle = '#ffd75a';
+            ctx.beginPath();
+            ctx.arc(item.x + item.width / 2, item.y + item.height / 2, item.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            break;
+          case 'energy':
+            ctx.fillStyle = '#6cffbe';
+            ctx.fillRect(item.x, item.y, item.width, item.height);
+            break;
+          case 'shield':
+            ctx.strokeStyle = '#8cf';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(item.x + item.width / 2, item.y + item.height / 2, item.width / 2, 0, Math.PI * 2);
+            ctx.stroke();
+            break;
+          case 'skill':
+            ctx.fillStyle = '#c68cff';
+            ctx.beginPath();
+            ctx.arc(item.x + item.width / 2, item.y + item.height / 2, item.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(item.x + item.width / 2 - 4, item.y + 8, 8, item.height - 16);
+            ctx.fillRect(item.x + 8, item.y + item.height / 2 - 4, item.width - 16, 8);
+            break;
+        }
+      });
+
+      drawPlayer(ctx);
+
+      arrays.particles.forEach(p => {
+        ctx.globalAlpha = Math.max(0, p.life * 1.6);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      ctx.restore();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.font = '20px "Segoe UI"';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${state.stageName}`, 24, 36);
+    }
+
+    function drawPlayer(ctx) {
+      ctx.save();
+      const wobble = Math.sin(state.time * 8) * 4;
+      ctx.translate(player.x, player.y + wobble);
+      ctx.fillStyle = '#1b9cff';
+      const bodyHeight = player.sliding ? player.height - 12 : player.height;
+      ctx.fillRect(0, 0, player.width, bodyHeight);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(12, 12, 36, 18);
+      if (player.dashTimer > 0) {
+        ctx.fillStyle = 'rgba(110,204,255,0.4)';
+        ctx.fillRect(-18, 8, 18, bodyHeight - 16);
+      }
+      if (!player.onGround) {
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(10, bodyHeight - 10, player.width - 20, 6);
+      }
+      ctx.restore();
+    }
+
+    function loop(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const delta = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+      lastTimestamp = timestamp;
+
+      if (state.phase === 'running') {
+        updateGame(delta);
+      }
+
+      renderGame();
+      requestAnimationFrame(loop);
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = rect.width / BASE_WIDTH;
+      const scaleY = rect.height / BASE_HEIGHT;
+      camera.offsetX = (scaleX - 1) * BASE_WIDTH * 0.5;
+      camera.offsetY = (scaleY - 1) * BASE_HEIGHT * 0.5;
+    }
+
+    function collectInput() {
+      window.addEventListener('keydown', (event) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowRight', 'Space'].includes(event.code)) {
+          event.preventDefault();
+        }
+        if (event.code === 'ArrowUp') keys.add('ArrowUp');
+        if (event.code === 'ArrowDown') keys.add('ArrowDown');
+        if (event.code === 'ArrowRight') keys.add('ArrowRight');
+        if (event.code === 'Space') {
+          if (event.repeat) return;
+          if (state.phase === 'running') {
+            if (player.skill && player.skillReady) {
+              keys.add('SpaceSkill');
+            } else {
+              keys.add('Space');
+            }
+          }
+        }
+      });
+
+      window.addEventListener('keyup', (event) => {
+        if (event.code === 'ArrowUp') keys.delete('ArrowUp');
+        if (event.code === 'ArrowDown') keys.delete('ArrowDown');
+        if (event.code === 'ArrowRight') keys.delete('ArrowRight');
+        if (event.code === 'Space') {
+          keys.delete('Space');
+          keys.delete('SpaceSkill');
+        }
+      });
+
+      canvas.addEventListener('pointerdown', (event) => {
+        pointer.active = true;
+        pointer.startX = event.clientX;
+        pointer.startY = event.clientY;
+        pointer.startTime = performance.now();
+      });
+
+      canvas.addEventListener('pointerup', (event) => {
+        if (!pointer.active) return;
+        pointer.active = false;
+        const dx = event.clientX - pointer.startX;
+        const dy = event.clientY - pointer.startY;
+        const dt = performance.now() - pointer.startTime;
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+          keys.add('PointerJump');
+          setTimeout(() => keys.delete('PointerJump'), 80);
+          return;
+        }
+        if (Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 30) {
+            keys.add('PointerDash');
+            setTimeout(() => keys.delete('PointerDash'), 40);
+          }
+        } else {
+          if (dy > 30) {
+            keys.add('PointerDown');
+            setTimeout(() => keys.delete('PointerDown'), 140);
+          } else if (dy < -30) {
+            keys.add('PointerJump');
+            setTimeout(() => keys.delete('PointerJump'), 80);
+          }
+        }
+      });
+    }
+
+    function setupUI() {
+      document.querySelectorAll('[data-start]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const difficulty = difficultySettings[btn.dataset.start];
+          startRun(difficulty);
+        });
+      });
+
+      const btnUpgradeOpen = document.getElementById('btnUpgrade');
+      const btnUpgradeClose = document.getElementById('btnUpgradeClose');
+      const btnResultUpgrade = document.getElementById('btnResultUpgrade');
+      const btnShowRanking = document.getElementById('btnShowRanking');
+      const btnRankingClose = document.getElementById('btnRankingClose');
+      const btnTutorial = document.getElementById('btnTutorial');
+      const btnTutorialClose = document.getElementById('btnTutorialClose');
+      const btnRetry = document.getElementById('btnRetry');
+      const btnResultTitle = document.getElementById('btnResultTitle');
+      const btnBackMenu = document.getElementById('btnBackMenu');
+
+      if (btnUpgradeOpen) {
+        btnUpgradeOpen.addEventListener('click', () => {
+          showOverlay(upgradeScreen);
+          rebuildUpgrades();
+        });
+      }
+      if (btnUpgradeClose) {
+        btnUpgradeClose.addEventListener('click', () => {
+          if (state.phase === 'running') {
+            showOverlay(null);
+          } else if (state.phase === 'result') {
+            showOverlay(resultScreen);
+          } else {
+            showOverlay(titleScreen);
+          }
+        });
+      }
+      if (btnResultUpgrade) {
+        btnResultUpgrade.addEventListener('click', () => {
+          showOverlay(upgradeScreen);
+          rebuildUpgrades();
+        });
+      }
+      if (btnShowRanking) {
+        btnShowRanking.addEventListener('click', () => {
+          rebuildRanking();
+          showOverlay(rankingScreen);
+        });
+      }
+      if (btnRankingClose) {
+        btnRankingClose.addEventListener('click', () => {
+          showOverlay(titleScreen);
+        });
+      }
+      if (btnTutorial) {
+        btnTutorial.addEventListener('click', () => {
+          showOverlay(tutorialScreen);
+        });
+      }
+      if (btnTutorialClose) {
+        btnTutorialClose.addEventListener('click', () => {
+          showOverlay(titleScreen);
+        });
+      }
+      if (btnRetry) {
+        btnRetry.addEventListener('click', () => {
+          showOverlay(null);
+          startRun(state.difficulty);
+        });
+      }
+      if (btnResultTitle) {
+        btnResultTitle.addEventListener('click', () => {
+          state.phase = 'title';
+          showOverlay(titleScreen);
+        });
+      }
+      if (btnBackMenu) {
+        btnBackMenu.addEventListener('click', () => {
+          window.location.href = 'index.html';
+        });
+      }
+
+      btnMute.addEventListener('click', () => {
+        AUDIO.toggle();
+        if (!AUDIO.muted && state.phase === 'running') {
+          AUDIO.startBgm();
+        }
+        updateHUD();
+      });
+    }
+
+    function startRun(difficulty) {
+      if (!difficulty) difficulty = difficultySettings.normal;
+      state.difficulty = difficulty;
+      player.skill = player.skill || rollSkill();
+      player.shield = Math.min(1 + profile.upgrades.skill, 3);
+      showOverlay(null);
+      state.phase = 'running';
+      resetRun(difficulty);
+    }
+
+    function createAudioSystem() {
+      const ctx = window.AudioContext ? new AudioContext() : null;
+      const gainNode = ctx ? ctx.createGain() : null;
+      let bgmOsc = null;
+      let bgmLfo = null;
+      let muted = false;
+      if (gainNode && ctx) {
+        gainNode.gain.value = 0.12;
+        gainNode.connect(ctx.destination);
+      }
+
+      const sounds = {
+        jump: 520,
+        slide: 180,
+        dash: 320,
+        coin: 960,
+        energy: 680,
+        shield: 420,
+        skill: 760,
+        shockwave: 280,
+        hit: 300,
+        guard: 640,
+        damage: 160,
+        buff: 880,
+        grapple: 440,
+        slow: 240
+      };
+
+      function ensureContext() {
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume();
+        }
+      }
+
+      return {
+        muted,
+        toggle() {
+          muted = !muted;
+          if (gainNode) gainNode.gain.value = muted ? 0 : 0.12;
+          this.muted = muted;
+        },
+        startBgm() {
+          if (!ctx || muted) return;
+          ensureContext();
+          if (bgmOsc) return;
+          bgmOsc = ctx.createOscillator();
+          bgmOsc.type = 'sawtooth';
+          bgmOsc.frequency.value = 160;
+          const bgmGain = ctx.createGain();
+          bgmGain.gain.value = 0.04;
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.value = 720;
+          bgmLfo = ctx.createOscillator();
+          const lfoGain = ctx.createGain();
+          lfoGain.gain.value = 20;
+          bgmLfo.frequency.value = 0.9;
+          bgmLfo.connect(lfoGain);
+          lfoGain.connect(bgmOsc.frequency);
+          bgmOsc.connect(filter).connect(bgmGain).connect(gainNode);
+          bgmOsc.start();
+          bgmLfo.start();
+        },
+        stopBgm() {
+          if (bgmOsc) {
+            bgmOsc.stop();
+            if (bgmLfo) bgmLfo.stop();
+            bgmOsc = null;
+            bgmLfo = null;
+          }
+        },
+        update(speed) {
+          if (!ctx || !bgmOsc) return;
+          const freq = 140 + clamp(speed, 480, 1200) * 0.08;
+          bgmOsc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.4);
+        },
+        play(name) {
+          if (!ctx || muted) return;
+          ensureContext();
+          const freq = sounds[name] || 440;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          gain.gain.value = 0.06;
+          osc.connect(gain).connect(gainNode);
+          osc.start();
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+          osc.stop(ctx.currentTime + 0.32);
+        }
+      };
+    }
+
+    function init() {
+      rebuildTitleStats();
+      rebuildRanking();
+      updateHUD();
+      collectInput();
+      setupUI();
+      resizeCanvas();
+      requestAnimationFrame(loop);
+      window.addEventListener('resize', resizeCanvas);
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>
