@@ -190,6 +190,13 @@
             <button id="menuDeadzoneBtn" type="button">サバイバル開始</button>
           </div>
         </article>
+        <article class="menu-card">
+          <h2>スワップ・モンスターズ</h2>
+          <p>隣接するモンスターをスワップして進化させる連鎖型マッチパズル。爆弾やレインボーエッグを駆使し、進化図鑑とランキングを埋め尽くそう。</p>
+          <div class="menu-actions">
+            <button id="menuSwapBtn" type="button">進化パズル</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
@@ -204,6 +211,7 @@
     const runnerBtn = document.getElementById('menuRunnerBtn');
     const echoesBtn = document.getElementById('menuEchoesBtn');
     const deadzoneBtn = document.getElementById('menuDeadzoneBtn');
+    const swapBtn = document.getElementById('menuSwapBtn');
 
     function getContinueData() {
       try {
@@ -276,6 +284,12 @@
     if (deadzoneBtn) {
       deadzoneBtn.addEventListener('click', () => {
         window.location.href = 'deadzone.html';
+      });
+    }
+
+    if (swapBtn) {
+      swapBtn.addEventListener('click', () => {
+        window.location.href = 'swapmonsters.html';
       });
     }
 
