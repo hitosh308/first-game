@@ -139,18 +139,29 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       padding: clamp(1.5rem, 4vw, 2.5rem);
-      gap: clamp(1.2rem, 3vw, 1.8rem);
       color: var(--text);
       text-align: center;
       transition: opacity 0.25s ease;
       opacity: 0;
       pointer-events: none;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      scroll-padding: clamp(1rem, 3vw, 1.6rem);
     }
     .overlay.active {
       opacity: 1;
       pointer-events: auto;
+    }
+    .overlay-content {
+      width: min(680px, 100%);
+      margin: clamp(1rem, 6vh, 3rem) auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(1.2rem, 3vw, 1.8rem);
     }
     .overlay h1 {
       margin: 0;
@@ -204,6 +215,15 @@
     }
     .overlay button:active {
       transform: translateY(1px);
+    }
+    @media (max-height: 640px) {
+      .overlay {
+        padding: clamp(1.1rem, 4vw, 1.8rem);
+      }
+      .overlay-content {
+        margin: clamp(0.8rem, 5vh, 1.8rem) auto;
+        gap: clamp(0.9rem, 2.6vw, 1.2rem);
+      }
     }
     .touch-layer {
       position: absolute;
@@ -399,36 +419,40 @@
       <span>タップで左右移動 · スワイプで高速回避</span>
     </div>
     <div class="overlay active" id="startOverlay" role="dialog" aria-modal="true">
-      <h1>スカイダイブ・インフェルノ</h1>
-      <p>無限に広がる空を突き抜け、灼熱の深層へ。障害物をギリギリでかわし、燃え盛るリングを潜り抜けてスコアを伸ばそう。</p>
-      <div class="overlay-section">
-        <h2>操作</h2>
-        <ul>
-          <li>PC: ←/→ または A/D で左右移動、スペースで即時再スタート</li>
-          <li>スマホ: 画面左右タップで移動、素早くスワイプすると高速回避</li>
-          <li>リング通過で加速モード発動。ターボジェットで操作性アップ、タイムスローで状況整理。</li>
-        </ul>
+      <div class="overlay-content">
+        <h1>スカイダイブ・インフェルノ</h1>
+        <p>無限に広がる空を突き抜け、灼熱の深層へ。障害物をギリギリでかわし、燃え盛るリングを潜り抜けてスコアを伸ばそう。</p>
+        <div class="overlay-section">
+          <h2>操作</h2>
+          <ul>
+            <li>PC: ←/→ または A/D で左右移動、スペースで即時再スタート</li>
+            <li>スマホ: 画面左右タップで移動、素早くスワイプすると高速回避</li>
+            <li>リング通過で加速モード発動。ターボジェットで操作性アップ、タイムスローで状況整理。</li>
+          </ul>
+        </div>
+        <div class="overlay-section">
+          <h2>スコアとアイテム</h2>
+          <ul>
+            <li>落下距離 × 10点。リング通過でコンボボーナスが上昇。</li>
+            <li>障害物を紙一重で避けるとニアミスボーナス。連続で狙って大幅加点。</li>
+            <li>シールド: 一度だけ衝突を無効化。ターボジェット: 横移動と制御力アップ。</li>
+            <li>タイムスロー: 周囲がスローモーションになり、次の一手を整えられる。</li>
+          </ul>
+        </div>
+        <div class="overlay-section">
+          <h2>実績</h2>
+          <div class="achievements-grid" id="achievementGrid"></div>
+        </div>
+        <button id="startButton" type="button">Dive Start</button>
       </div>
-      <div class="overlay-section">
-        <h2>スコアとアイテム</h2>
-        <ul>
-          <li>落下距離 × 10点。リング通過でコンボボーナスが上昇。</li>
-          <li>障害物を紙一重で避けるとニアミスボーナス。連続で狙って大幅加点。</li>
-          <li>シールド: 一度だけ衝突を無効化。ターボジェット: 横移動と制御力アップ。</li>
-          <li>タイムスロー: 周囲がスローモーションになり、次の一手を整えられる。</li>
-        </ul>
-      </div>
-      <div class="overlay-section">
-        <h2>実績</h2>
-        <div class="achievements-grid" id="achievementGrid"></div>
-      </div>
-      <button id="startButton" type="button">Dive Start</button>
     </div>
     <div class="overlay" id="gameOverOverlay" role="dialog" aria-modal="true">
-      <h1>墜落……しかし終わりではない</h1>
-      <p id="gameOverSummary">あなたの記録</p>
-      <div class="overlay-section" id="gameOverStats"></div>
-      <button id="restartButton" type="button">再挑戦</button>
+      <div class="overlay-content">
+        <h1>墜落……しかし終わりではない</h1>
+        <p id="gameOverSummary">あなたの記録</p>
+        <div class="overlay-section" id="gameOverStats"></div>
+        <button id="restartButton" type="button">再挑戦</button>
+      </div>
     </div>
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
   </div>
