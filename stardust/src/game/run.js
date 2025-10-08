@@ -7,9 +7,8 @@ import { encodeRun, encodeGhost } from "./share.js";
 import { track } from "../engine/analytics.js";
 
 export class RunManager {
-  constructor(localization, audio, settings) {
+  constructor(localization, settings) {
     this.localization = localization;
-    this.audio = audio;
     this.settings = settings;
     this.state = null;
     this.battle = null;
@@ -43,7 +42,7 @@ export class RunManager {
     this.state = createInitialState(this.rng, modifier?.handBonus || 0);
     this.state.runSeed = seed;
     this.state.map = generateMap(this.rng);
-    this.battle = new Battle(this.state, this.rng, this.audio, this.localization, this.settings);
+    this.battle = new Battle(this.state, this.rng, this.localization, this.settings);
     await saveGame(this.serialize());
     track("run_start", { seed, modifier });
   }
@@ -53,10 +52,9 @@ export class RunManager {
     if (!data) return false;
     Object.assign(this, data);
     this.localization = window.localization;
-    this.audio = window.audioManager;
     this.seedValue = data.seedValue || Date.now();
     this.rng = mulberry32(this.seedValue);
-    this.battle = new Battle(this.state, this.rng, this.audio, this.localization, this.settings);
+    this.battle = new Battle(this.state, this.rng, this.localization, this.settings);
     track("run_loaded", { seed: this.state.runSeed });
     return true;
   }

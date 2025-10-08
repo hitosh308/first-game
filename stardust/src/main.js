@@ -1,5 +1,4 @@
 import { Localization } from "./engine/localization.js";
-import { AudioManager } from "./engine/audio.js";
 import { RunManager } from "./game/run.js";
 import { CARD_LIBRARY, RELIC_LIBRARY, getCardDefinition } from "./game/state.js";
 import { decodeRun, decodeGhost } from "./game/share.js";
@@ -12,8 +11,6 @@ const tutorialBox = document.getElementById("tutorial");
 const metaBox = document.getElementById("meta");
 
 const settings = {
-  volume: 0.7,
-  muted: false,
   fontSize: 16,
   colorblind: false,
   highContrast: false,
@@ -23,10 +20,7 @@ const settings = {
 const localization = new Localization("en");
 window.localization = localization;
 
-const audioManager = new AudioManager(settings);
-window.audioManager = audioManager;
-
-const runManager = new RunManager(localization, audioManager, settings);
+const runManager = new RunManager(localization, settings);
 
 let currentScene = "title";
 let dailySeed = null;
@@ -39,7 +33,6 @@ async function setup() {
   await localization.load(navigator.language.startsWith("ja") ? "ja" : "en");
   await runManager.init();
   updateSettingsUI();
-  await audioManager.init();
   prepareDaily();
   bindUI();
   renderTitle();
@@ -93,11 +86,6 @@ function bindUI() {
     renderCurrentScene();
   });
 
-  document.getElementById("volume-range").addEventListener("input", (event) => {
-    settings.volume = Number(event.target.value);
-    audioManager.updateVolume();
-  });
-
   document.getElementById("font-range").addEventListener("input", (event) => {
     settings.fontSize = Number(event.target.value);
     document.documentElement.style.setProperty("--font-size", `${settings.fontSize}px`);
@@ -117,11 +105,6 @@ function bindUI() {
     settings.reducedMotion = event.target.checked;
     document.body.classList.toggle("reduced-motion", settings.reducedMotion);
   });
-
-  document.getElementById("mute-toggle").addEventListener("change", (event) => {
-    settings.muted = event.target.checked;
-    audioManager.updateVolume();
-  });
 }
 
 function applyLocalization() {
@@ -130,12 +113,10 @@ function applyLocalization() {
   document.getElementById("load-btn").textContent = localization.t("ui.load");
   document.getElementById("settings-title").textContent = localization.t("ui.settings");
   document.getElementById("language-label").textContent = localization.t("ui.language");
-  document.getElementById("volume-label").textContent = localization.t("ui.volume");
   document.getElementById("font-label").textContent = localization.t("ui.fontSize");
   document.getElementById("palette-label").textContent = localization.t("ui.colorblind");
   document.getElementById("contrast-label").textContent = localization.t("ui.highContrast");
   document.getElementById("motion-label").textContent = localization.t("ui.reducedMotion");
-  document.getElementById("mute-label").textContent = localization.t("ui.mute");
   document.getElementById("title").textContent = localization.t("ui.title");
 }
 
@@ -345,7 +326,6 @@ function renderShop() {
         runManager.state.gold -= price;
         runManager.state.player.discardPile.push(card.id);
         runManager.state.startDeck.push(card.id);
-        audioManager.play("shop");
         loadMeta();
         runManager.save();
         renderShop();
@@ -493,7 +473,6 @@ function checkHash() {
 }
 
 function updateSettingsUI() {
-  document.getElementById("volume-range").value = settings.volume;
   document.getElementById("font-range").value = settings.fontSize;
   document.documentElement.style.setProperty("--font-size", `${settings.fontSize}px`);
 }

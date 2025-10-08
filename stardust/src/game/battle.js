@@ -9,10 +9,9 @@ const floatPool = new ObjectPool(() => {
 });
 
 export class Battle {
-  constructor(state, rng, audio, localization, settings) {
+  constructor(state, rng, localization, settings) {
     this.state = state;
     this.rng = rng;
-    this.audio = audio;
     this.localization = localization;
     this.settings = settings;
     this.turn = 0;
@@ -85,7 +84,6 @@ export class Battle {
     this.resolveCard(card, target);
     this.state.player.discardPile.push(cardId);
     this.log(`card:${cardId}`);
-    this.audio.play("attack");
     return true;
   }
 
@@ -144,9 +142,6 @@ export class Battle {
         const heal = Math.round(actual * (this.state.player.powers.lifesteal / 100));
         this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + heal);
       }
-    }
-    if (target.hp <= 0) {
-      this.audio.play("hit");
     }
   }
 
@@ -221,7 +216,6 @@ export class Battle {
       this.dealDamage(this.enemy, this.state.player.powers.reflect);
     }
     this.spawnFloat(`-${hpDamage}`);
-    this.audio.play("hit");
   }
 
   spawnFloat(text) {
