@@ -1,4 +1,4 @@
-[
+export default [
   {
     "id": "starlit_fountain",
     "nameKey": "event.starlit_fountain.name",
@@ -16,3 +16,4 @@
     ]
   }
 ]
+

@@ -1,4 +1,4 @@
-{
+export default {
   "normal": [
     {
       "id": "scavenger",
@@ -55,3 +55,4 @@
     }
   ]
 }
+
