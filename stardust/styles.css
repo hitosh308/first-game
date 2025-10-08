@@ -1,0 +1,240 @@
+:root {
+  --bg: #0b1021;
+  --fg: #e0f0ff;
+  --accent: #ffcc66;
+  --danger: #ff6680;
+  --font-size: 16px;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, rgba(25, 40, 80, 0.6), #05060f);
+  color: var(--fg);
+  font-family: "Segoe UI", sans-serif;
+  font-size: var(--font-size);
+  overflow: hidden;
+}
+
+body.reduced-motion * {
+  transition: none !important;
+  animation: none !important;
+}
+
+.colorblind .card.attack {
+  border-color: #fcbf49;
+}
+
+.colorblind .card.skill {
+  border-color: #90be6d;
+}
+
+.colorblind .card.power {
+  border-color: #577590;
+}
+
+body.contrast {
+  filter: contrast(1.2);
+}
+
+main {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100vh;
+}
+
+#sidebar {
+  background: rgba(12, 18, 40, 0.8);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+#content {
+  position: relative;
+  overflow: hidden;
+}
+
+h1, h2, h3 {
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+button {
+  background: linear-gradient(135deg, rgba(255, 204, 102, 0.85), rgba(255, 160, 64, 0.85));
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #1b0f1f;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 4px 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(255, 200, 128, 0.3);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.card {
+  background: rgba(30, 45, 80, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 8px;
+  width: 160px;
+  min-height: 220px;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: rotate3d(1, 0, 0, -6deg) scale(1.05);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+}
+
+.card.power {
+  border-color: rgba(255, 236, 179, 0.9);
+  box-shadow: 0 0 12px rgba(255, 215, 128, 0.4);
+}
+
+.card.attack {
+  border-color: rgba(255, 120, 120, 0.7);
+}
+
+.card.skill {
+  border-color: rgba(120, 200, 255, 0.7);
+}
+
+.damage-float {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  font-size: 32px;
+  color: var(--danger);
+  opacity: 0;
+  transition: transform 0.6s ease, opacity 0.6s ease;
+  pointer-events: none;
+  text-shadow: 0 0 8px rgba(255, 120, 120, 0.8);
+}
+
+.damage-float.show {
+  opacity: 1;
+  transform: translate(-50%, -60%) scale(1.2);
+}
+
+#map {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 24px;
+  height: 100%;
+}
+
+.map-node {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(50, 80, 140, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.map-node:hover {
+  transform: scale(1.05);
+  background: rgba(80, 130, 200, 0.85);
+}
+
+.map-node.visited {
+  background: rgba(150, 220, 255, 0.4);
+}
+
+#battle {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px;
+  height: 100%;
+}
+
+#battle .potions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+#battle .potions .potion {
+  background: linear-gradient(135deg, rgba(150, 220, 255, 0.8), rgba(90, 160, 255, 0.8));
+}
+
+#battle .hands {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#enemy-intent {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.toast {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 12px 18px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  color: #fff;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.settings-group {
+  margin-bottom: 16px;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#tutorial {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 960px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+  #sidebar {
+    height: auto;
+    max-height: 40vh;
+  }
+}

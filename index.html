@@ -216,6 +216,13 @@
             <button id="menuSwapBtn" type="button">進化パズル</button>
           </div>
         </article>
+        <article class="menu-card">
+          <h2>スターダストランナー</h2>
+          <p>宇宙航路を進むデッキ構築ローグライト。カードや遺物、デイリーシードで毎日違う航行に挑もう。</p>
+          <div class="menu-actions">
+            <button id="menuStardustBtn" type="button">航行を開始</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
@@ -233,6 +240,7 @@
     const echoesBtn = document.getElementById('menuEchoesBtn');
     const deadzoneBtn = document.getElementById('menuDeadzoneBtn');
     const swapBtn = document.getElementById('menuSwapBtn');
+    const stardustBtn = document.getElementById('menuStardustBtn');
 
     function getContinueData() {
       try {
@@ -323,6 +331,12 @@
     if (swapBtn) {
       swapBtn.addEventListener('click', () => {
         window.location.href = 'swapmonsters.html';
+      });
+    }
+
+    if (stardustBtn) {
+      stardustBtn.addEventListener('click', () => {
+        window.location.href = 'stardust/index.html';
       });
     }
 
