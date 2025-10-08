@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stardust Runner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <aside id="sidebar">
+      <h1 id="title">Stardust Runner</h1>
+      <div class="settings-group">
+        <button id="start-btn"></button>
+        <button id="daily-btn"></button>
+        <button id="load-btn"></button>
+      </div>
+      <div class="settings-group">
+        <h3 id="settings-title"></h3>
+        <div class="label-row">
+          <label for="language-select" id="language-label"></label>
+          <select id="language-select">
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+        </div>
+        <div class="label-row">
+          <label for="volume-range" id="volume-label"></label>
+          <input type="range" id="volume-range" min="0" max="1" step="0.05" value="0.7" />
+        </div>
+        <div class="label-row">
+          <label for="font-range" id="font-label"></label>
+          <input type="range" id="font-range" min="14" max="22" step="1" value="16" />
+        </div>
+        <div class="label-row">
+          <label for="palette-toggle" id="palette-label"></label>
+          <input type="checkbox" id="palette-toggle" />
+        </div>
+        <div class="label-row">
+          <label for="contrast-toggle" id="contrast-label"></label>
+          <input type="checkbox" id="contrast-toggle" />
+        </div>
+        <div class="label-row">
+          <label for="motion-toggle" id="motion-label"></label>
+          <input type="checkbox" id="motion-toggle" />
+        </div>
+        <div class="label-row">
+          <label for="mute-toggle" id="mute-label"></label>
+          <input type="checkbox" id="mute-toggle" />
+        </div>
+      </div>
+      <div id="tutorial"></div>
+      <div id="meta"></div>
+    </aside>
+    <section id="content">
+      <div id="scene"></div>
+      <div class="toast" id="toast"></div>
+    </section>
+  </main>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

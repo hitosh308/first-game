@@ -1,0 +1,57 @@
+{
+  "normal": [
+    {
+      "id": "scavenger",
+      "nameKey": "enemy.scavenger.name",
+      "hp": 40,
+      "intents": [
+        {"type": "attack", "value": 7},
+        {"type": "block", "value": 6},
+        {"type": "buff", "status": "strength", "value": 2}
+      ]
+    },
+    {
+      "id": "sentinel",
+      "nameKey": "enemy.sentinel.name",
+      "hp": 48,
+      "intents": [
+        {"type": "attack", "value": 9},
+        {"type": "attack", "value": 12, "condition": "playerBlockLow"},
+        {"type": "debuff", "status": "weak", "value": 2}
+      ]
+    },
+    {
+      "id": "parasite",
+      "nameKey": "enemy.parasite.name",
+      "hp": 35,
+      "intents": [
+        {"type": "attack", "value": 6, "hits": 2},
+        {"type": "debuff", "status": "vulnerable", "value": 2},
+        {"type": "heal", "value": 8, "condition": "hpBelowHalf"}
+      ]
+    },
+    {
+      "id": "stalker",
+      "nameKey": "enemy.stalker.name",
+      "hp": 42,
+      "intents": [
+        {"type": "attack", "value": 11},
+        {"type": "buff", "status": "phase", "value": 1},
+        {"type": "attack", "value": 5, "hits": 3}
+      ]
+    }
+  ],
+  "elite": [
+    {
+      "id": "cosmic_tyrant",
+      "nameKey": "enemy.cosmic_tyrant.name",
+      "hp": 120,
+      "intents": [
+        {"type": "attack", "value": 18},
+        {"type": "attack", "value": 12, "hits": 2},
+        {"type": "debuff", "status": "burn", "value": 3},
+        {"type": "buff", "status": "strength", "value": 3}
+      ]
+    }
+  ]
+}
