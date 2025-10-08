@@ -1,4 +1,4 @@
-[
+export default [
   {"id": "meteor_core", "nameKey": "relic.meteor_core.name", "descriptionKey": "relic.meteor_core.desc", "effect": "startStrength", "value": 1},
   {"id": "stardust_pouch", "nameKey": "relic.stardust_pouch.name", "descriptionKey": "relic.stardust_pouch.desc", "effect": "extraGold", "value": 30},
   {"id": "quantum_compass", "nameKey": "relic.quantum_compass.name", "descriptionKey": "relic.quantum_compass.desc", "effect": "mapChoice", "value": 1},
@@ -7,3 +7,4 @@
   {"id": "cosmic_lens", "nameKey": "relic.cosmic_lens.name", "descriptionKey": "relic.cosmic_lens.desc", "effect": "cardDiscovery", "value": 1},
   {"id": "warp_singularity", "nameKey": "relic.warp_singularity.name", "descriptionKey": "relic.warp_singularity.desc", "effect": "powerFree", "value": 1}
 ]
+

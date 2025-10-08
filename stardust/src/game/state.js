@@ -1,7 +1,7 @@
-import cardsData from "../data/cards.json" assert { type: "json" };
-import relicsData from "../data/relics.json" assert { type: "json" };
-import enemiesData from "../data/enemies.json" assert { type: "json" };
-import eventsData from "../data/events.json" assert { type: "json" };
+import cardsData from "../data/cards.js";
+import relicsData from "../data/relics.js";
+import enemiesData from "../data/enemies.js";
+import eventsData from "../data/events.js";
 import { seededShuffle, choose } from "../engine/random.js";
 
 export const CARD_LIBRARY = cardsData;

@@ -1,4 +1,4 @@
-[
+export default [
   {
     "id": "strike",
     "nameKey": "card.strike.name",
@@ -136,3 +136,4 @@
     "upgrade": {"value": 3}
   }
 ]
+
