@@ -1,4 +1,4 @@
-import { SFX, BGM } from "../audio/index.js";
+import { SFX } from "../audio/index.js";
 
 export class AudioManager {
   constructor(settings) {
@@ -19,7 +19,6 @@ export class AudioManager {
     this.gainNode.connect(this.context.destination);
     this.updateVolume();
     await this.preload();
-    this.playLoop(BGM);
   }
 
   updateVolume() {
@@ -29,7 +28,7 @@ export class AudioManager {
   }
 
   async preload() {
-    const entries = Object.entries({ ...SFX, bgm: BGM });
+    const entries = Object.entries(SFX);
     for (const [key, data] of entries) {
       const arrayBuffer = await this.loadData(data);
       const buffer = await this.context.decodeAudioData(arrayBuffer);
@@ -70,18 +69,4 @@ export class AudioManager {
     source.start(0);
   }
 
-  playLoop(data) {
-    if (this.settings.muted || !this.context) return;
-    const buffer = this.buffers.get("bgm");
-    if (!buffer) return;
-    if (this.loopSource) {
-      this.loopSource.stop();
-    }
-    const source = this.context.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-    source.connect(this.gainNode);
-    source.start(0);
-    this.loopSource = source;
-  }
 }
