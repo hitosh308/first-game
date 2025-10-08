@@ -31,11 +31,33 @@ export class AudioManager {
   async preload() {
     const entries = Object.entries({ ...SFX, bgm: BGM });
     for (const [key, data] of entries) {
-      const response = await fetch(data);
-      const arrayBuffer = await response.arrayBuffer();
+      const arrayBuffer = await this.loadData(data);
       const buffer = await this.context.decodeAudioData(arrayBuffer);
       this.buffers.set(key, buffer);
     }
+  }
+
+  async loadData(data) {
+    if (typeof data === "string" && data.startsWith("data:")) {
+      return this.decodeDataUri(data);
+    }
+    const response = await fetch(data);
+    return response.arrayBuffer();
+  }
+
+  decodeDataUri(uri) {
+    const commaIndex = uri.indexOf(",");
+    if (commaIndex === -1) {
+      throw new Error("Invalid data URI");
+    }
+    const base64 = uri.slice(commaIndex + 1);
+    const binary = atob(base64);
+    const length = binary.length;
+    const bytes = new Uint8Array(length);
+    for (let i = 0; i < length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
   }
 
   play(name) {
